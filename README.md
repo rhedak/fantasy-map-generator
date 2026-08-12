@@ -33,12 +33,33 @@ svg = render_map(seed=42)
 print(svg[:100])  # First 100 chars of SVG
 ```
 
-### Launch the GUI (Under Development)
+### Launch the Interactive GUI
 
+**Option 1: Using the control script (recommended)**
 ```bash
-python -m fantasy_map_generator.gui
+./gui.sh start
 # Opens http://localhost:5000
 ```
+
+**Option 2: Direct Python**
+```bash
+python -m fantasy_map_generator.gui
+```
+
+**Manage the server:**
+```bash
+./gui.sh status    # Check if server is running
+./gui.sh stop      # Stop the server
+./gui.sh restart   # Restart the server
+./gui.sh logs      # Follow server logs
+```
+
+The GUI features:
+- **Map gallery:** Choose from presets (Valley of Mists, Random world)
+- **Seed slider:** Adjust seed to explore variations (0–10000)
+- **Live preview:** Real-time SVG rendering as you adjust parameters
+- **Export buttons:** Download as SVG or PNG (if cairosvg installed)
+- **Shareable URLs:** Copy links like `?preset=valley&seed=42` to share maps
 
 ## Features
 
@@ -68,10 +89,11 @@ python -m fantasy_map_generator.gui
 | Phase | Status | Effort | Milestone |
 |-------|--------|--------|-----------|
 | 1. Scaffolding | ✅ Done | 4h | Project structure, CLI, tests |
-| 2. Extraction & Refactor | 📋 Planned | 20–30h | Generalize Valley code, MapConfig |
-| 3. Terrain Algorithms | 📋 Planned | 20–30h | Settlement placement, water simulation |
-| 4. Web GUI | 📋 Planned | 12–20h | Interactive controls, preview, export |
-| 5. Documentation & Examples | 📋 Planned | 12–18h | Tutorials, API docs, example worlds |
+| 2. Extraction & Refactor | ✅ Done | ~10h | SVG primitives, Palette, MapConfig, terrain generators (mountains, river, forest, settlements) |
+| 3. Terrain Algorithms | 📋 Next | 20–30h | Enhanced settlement placement, road networks, water features, decorative elements |
+| 4. Web GUI | ✅ Core | ~8h | Gallery, seed slider, live preview, download, URL sharing (expandable) |
+| 5. Advanced GUI | 📋 Later | 20–30h | Location editor, terrain density sliders, palette picker, custom world builder |
+| 6. Documentation | 📋 Ongoing | 12–18h | Tutorials, API docs, example worlds, world-building guide |
 
 See `docs/PLAN.md` for detailed roadmap and decision points.
 

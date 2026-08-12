@@ -84,3 +84,175 @@ VALLEY_CONFIG = MapConfig(
     },
     palette=VALLEY_PALETTE,
 )
+
+# Desert world: warm golds, sandy tones, sparse water
+DESERT_PALETTE = Palette(
+    background="#2a1810",
+    mountain="#6b4423",
+    mountain_stroke="#4a2817",
+    water="#d4a574",
+    water_tributary="#c9945f",
+    paddy="#8b6f47",
+    forest="#5d4e2e",
+    settlement="#d4a574",
+    settlement_roof="#9d7e54",
+    road="#e8c9a0",
+    road_dim="#c9a878",
+    text="#f5e6d3",
+    text_dim="#d4a574",
+    text_faint="#b8956d",
+    mist_wall="#f5e6d3",
+    mist_wall_stroke="#d4a574",
+    passage="#c9956f",
+    zone="#5d3e1f",
+    old_wall="#8b6f47",
+    palace_roof="#8b4513",
+    palace_roof_light="#a0522d",
+    palace_trim="#daa520",
+)
+
+DESERT_CONFIG = MapConfig(
+    name="Desert Kingdoms",
+    canvas_width=1000,
+    canvas_height=700,
+    locations={
+        "Oasis City": (200.0, 300.0),
+        "Lost Temple": (700.0, 250.0),
+        "Trading Post": (500.0, 500.0),
+        "Sand Fortress": (300.0, 550.0),
+    },
+    routes={
+        "trade_road": [(200.0, 300.0), (350.0, 350.0), (500.0, 400.0), (700.0, 350.0)],
+        "river": [(480.0, 100.0), (450.0, 250.0), (400.0, 400.0), (350.0, 500.0)],
+    },
+    palette=DESERT_PALETTE,
+)
+
+# Tropical world: vibrant greens, blues, warm tones
+TROPICAL_PALETTE = Palette(
+    background="#0a1f2e",
+    mountain="#1e5d4d",
+    mountain_stroke="#0d3b33",
+    water="#2db3a8",
+    water_tributary="#1fa399",
+    paddy="#2d7a6b",
+    forest="#0d6b5c",
+    settlement="#d4a574",
+    settlement_roof="#a0823d",
+    road="#d4c5a8",
+    road_dim="#b8a885",
+    text="#e8f4f0",
+    text_dim="#a8d4c8",
+    text_faint="#7ba89d",
+    mist_wall="#b8f0ed",
+    mist_wall_stroke="#80d4cc",
+    passage="#5fa89f",
+    zone="#0d3b33",
+    old_wall="#1e5d4d",
+    palace_roof="#0d6b5c",
+    palace_roof_light="#2d8a7a",
+    palace_trim="#80d4cc",
+)
+
+TROPICAL_CONFIG = MapConfig(
+    name="Tropical Islands",
+    canvas_width=1000,
+    canvas_height=700,
+    locations={
+        "Jungle Temple": (350.0, 300.0),
+        "Coastal Town": (650.0, 350.0),
+        "Island Village": (200.0, 550.0),
+        "Lagoon Harbor": (750.0, 500.0),
+    },
+    routes={
+        "reef_path": [(200.0, 550.0), (400.0, 450.0), (650.0, 350.0), (750.0, 300.0)],
+        "river": [(500.0, 80.0), (480.0, 200.0), (450.0, 350.0), (400.0, 500.0)],
+    },
+    palette=TROPICAL_PALETTE,
+)
+
+# Arctic world: cool blues, whites, silver
+ARCTIC_PALETTE = Palette(
+    background="#1a2332",
+    mountain="#4a6a8f",
+    mountain_stroke="#2a3f5f",
+    water="#5a8fbf",
+    water_tributary="#4a7faf",
+    paddy="#4a6a8f",
+    forest="#3a5a7f",
+    settlement="#c8d4e8",
+    settlement_roof="#8fa8c8",
+    road="#d8e4f0",
+    road_dim="#b8c8d8",
+    text="#e8f4fc",
+    text_dim="#a8c4dc",
+    text_faint="#7a94ac",
+    mist_wall="#d8e4f0",
+    mist_wall_stroke="#b8c8d8",
+    passage="#8fa8c8",
+    zone="#2a3f5f",
+    old_wall="#4a6a8f",
+    palace_roof="#2a4a7f",
+    palace_roof_light="#4a6a9f",
+    palace_trim="#a8c4dc",
+)
+
+ARCTIC_CONFIG = MapConfig(
+    name="Arctic Tundra",
+    canvas_width=1000,
+    canvas_height=700,
+    locations={
+        "Ice Citadel": (350.0, 250.0),
+        "Frost Harbor": (700.0, 400.0),
+        "Northern Settlement": (200.0, 350.0),
+        "Crystal Lake": (500.0, 550.0),
+    },
+    routes={
+        "frozen_path": [(200.0, 350.0), (350.0, 280.0), (500.0, 350.0), (700.0, 400.0)],
+        "river": [(480.0, 80.0), (450.0, 200.0), (420.0, 400.0), (450.0, 550.0)],
+    },
+    palette=ARCTIC_PALETTE,
+)
+
+# Autumn world: warm oranges, deep reds, browns
+AUTUMN_PALETTE = Palette(
+    background="#1f1410",
+    mountain="#8b4513",
+    mountain_stroke="#5c2c0a",
+    water="#9b7f5c",
+    water_tributary="#8a6d4a",
+    paddy="#6b5c3d",
+    forest="#6b4423",
+    settlement="#d4a574",
+    settlement_roof="#a0682a",
+    road="#e8b854",
+    road_dim="#c89838",
+    text="#f5e6d3",
+    text_dim="#d4a574",
+    text_faint="#b8956d",
+    mist_wall="#f5e6d3",
+    mist_wall_stroke="#d4a574",
+    passage="#c89a4e",
+    zone="#5c3a1f",
+    old_wall="#8b4513",
+    palace_roof="#a0522d",
+    palace_roof_light="#b8734b",
+    palace_trim="#d4a574",
+)
+
+AUTUMN_CONFIG = MapConfig(
+    name="Autumn Kingdoms",
+    canvas_width=1000,
+    canvas_height=700,
+    locations={
+        "Harvest City": (300.0, 280.0),
+        "Wood Village": (650.0, 320.0),
+        "Orchard Hold": (450.0, 500.0),
+        "Stone Keep": (200.0, 450.0),
+    },
+    routes={
+        "harvest_road": [(200.0, 450.0), (300.0, 350.0), (450.0, 400.0), (650.0, 320.0)],
+        "river": [(480.0, 80.0), (460.0, 250.0), (430.0, 400.0), (380.0, 550.0)],
+    },
+    palette=AUTUMN_PALETTE,
+)
