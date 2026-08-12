@@ -30,13 +30,10 @@ def test_deterministic_output():
 
 
 def test_different_seeds_produce_different_maps():
-    """Different seeds produce different SVG documents (after full implementation)."""
-    # TODO: This test will pass once Phase 2 extraction is complete and terrain
-    # generation uses the seed for variation. For now, the stub renders identically.
+    """Different seeds produce different SVG documents."""
     svg1 = render_map(seed=1)
     svg2 = render_map(seed=2)
-    # Note: Current stub doesn't vary by seed, so they're identical.
-    # This assertion will change to assert svg1 != svg2 after extraction.
+    assert svg1 != svg2, "Mountains and terrain should vary based on seed"
 
 
 def test_canvas_dimensions():
