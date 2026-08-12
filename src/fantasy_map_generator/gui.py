@@ -8,12 +8,13 @@ Provides a browser-based interface to:
 
 Usage:
     python -m fantasy_map_generator.gui
-    # Opens http://localhost:5000
+    # Opens http://localhost:3000
 """
 
-import json
+from __future__ import annotations
+
+import os
 import random
-from pathlib import Path
 
 try:
     import flask
@@ -22,13 +23,7 @@ except ImportError:
 
 from fantasy_map_generator.config import MapConfig
 from fantasy_map_generator.render import render_map
-from fantasy_map_generator.worlds import (
-    VALLEY_CONFIG,
-    DESERT_CONFIG,
-    TROPICAL_CONFIG,
-    ARCTIC_CONFIG,
-    AUTUMN_CONFIG,
-)
+from fantasy_map_generator.worlds import WORLDS
 
 
 def create_app():
@@ -47,15 +42,24 @@ def create_app():
 
     app = flask.Flask(__name__, static_folder=None)
 
-    # Map presets: name -> (description, config_or_generator, preview_svg_seed)
-    PRESETS = {
-        "valley": ("Valley of Mists", VALLEY_CONFIG, 42),
-        "desert": ("Desert Kingdoms", DESERT_CONFIG, 42),
-        "tropical": ("Tropical Islands", TROPICAL_CONFIG, 42),
-        "arctic": ("Arctic Tundra", ARCTIC_CONFIG, 42),
-        "autumn": ("Autumn Kingdoms", AUTUMN_CONFIG, 42),
-        "random": ("Random World", None, None),
+    # name, config (None = random), default preview seed
+    PRESETS: dict[str, tuple[str, MapConfig | None, int | None]] = {
+        world_id: (config.name, config, 42) for world_id, config in WORLDS.items()
     }
+    PRESETS["random"] = ("Random World", None, None)
+
+    def _config_for_preset(preset_id: str, seed: int) -> MapConfig:
+        if preset_id not in PRESETS:
+            raise KeyError(preset_id)
+        _name, config_or_none, _seed = PRESETS[preset_id]
+        if config_or_none is None:
+            return MapConfig(
+                name="Random World",
+                canvas_width=1000,
+                canvas_height=700,
+                locations=_generate_random_locations(seed),
+            )
+        return config_or_none
 
     @app.route("/")
     def index():
@@ -71,55 +75,42 @@ def create_app():
                 if config is not None:
                     preview_svg = render_map(config=config, seed=seed or 42)
                 else:
-                    # Random world preview
-                    config = MapConfig(
-                        name="Random World",
-                        canvas_width=1000,
-                        canvas_height=700,
-                        locations=_generate_random_locations(42),
+                    preview_svg = render_map(
+                        config=MapConfig(
+                            name="Random World",
+                            canvas_width=1000,
+                            canvas_height=700,
+                            locations=_generate_random_locations(42),
+                        ),
+                        seed=42,
                     )
-                    preview_svg = render_map(config=config, seed=42)
             except Exception:
                 pass
 
-            presets.append({
-                "id": preset_id,
-                "name": name,
-                "preview": preview_svg,
-            })
+            presets.append(
+                {
+                    "id": preset_id,
+                    "name": name,
+                    "preview": preview_svg,
+                }
+            )
         return flask.jsonify(presets)
 
     @app.route("/api/render", methods=["POST"])
     def api_render():
         """Render a map based on preset and seed."""
-        data = flask.request.get_json()
+        data = flask.request.get_json(silent=True) or {}
         preset_id = data.get("preset", "valley")
-        seed = data.get("seed", 42)
-
         try:
-            seed = int(seed)
+            seed = int(data.get("seed", 42))
         except (ValueError, TypeError):
             seed = 42
 
-        # Get config for this preset
         if preset_id not in PRESETS:
             return flask.jsonify({"error": f"Unknown preset: {preset_id}"}), 400
 
-        _, config_or_none = PRESETS[preset_id]
-
-        if config_or_none is None:
-            # Random world: generate a simple config
-            config = MapConfig(
-                name="Random World",
-                canvas_width=1000,
-                canvas_height=700,
-                locations=_generate_random_locations(seed),
-            )
-        else:
-            config = config_or_none
-
-        # Render map
         try:
+            config = _config_for_preset(preset_id, seed)
             svg = render_map(config=config, seed=seed)
             return flask.jsonify({"svg": svg, "seed": seed})
         except Exception as e:
@@ -128,31 +119,19 @@ def create_app():
     @app.route("/api/download", methods=["POST"])
     def api_download():
         """Render and download a map."""
-        data = flask.request.get_json()
+        data = flask.request.get_json(silent=True) or {}
         preset_id = data.get("preset", "valley")
-        seed = data.get("seed", 42)
-        format_ = data.get("format", "svg")  # svg or png
-
+        format_ = data.get("format", "svg")
         try:
-            seed = int(seed)
+            seed = int(data.get("seed", 42))
         except (ValueError, TypeError):
             seed = 42
 
         if preset_id not in PRESETS:
             return flask.jsonify({"error": "Unknown preset"}), 400
 
-        _, config_or_none = PRESETS[preset_id]
-        if config_or_none is None:
-            config = MapConfig(
-                name="Random World",
-                canvas_width=1000,
-                canvas_height=700,
-                locations=_generate_random_locations(seed),
-            )
-        else:
-            config = config_or_none
-
         try:
+            config = _config_for_preset(preset_id, seed)
             svg = render_map(config=config, seed=seed)
 
             if format_ == "svg":
@@ -162,7 +141,7 @@ def create_app():
                     headers={"Content-Disposition": f"attachment; filename=map-{seed}.svg"},
                 )
 
-            elif format_ == "png":
+            if format_ == "png":
                 try:
                     import cairosvg
 
@@ -178,8 +157,7 @@ def create_app():
                         501,
                     )
 
-            else:
-                return flask.jsonify({"error": "Unknown format"}), 400
+            return flask.jsonify({"error": "Unknown format"}), 400
 
         except Exception as e:
             return flask.jsonify({"error": str(e)}), 500
@@ -267,7 +245,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       color: #c62828;
     }
 
-    /* Gallery */
     #gallery-section {
       margin-bottom: 40px;
     }
@@ -323,7 +300,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       font-size: 1em;
     }
 
-    /* Editor layout */
     #editor-section {
       display: none;
     }
@@ -365,6 +341,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       gap: 10px;
       margin-top: 15px;
       flex-wrap: wrap;
+      align-items: center;
     }
 
     button {
@@ -411,7 +388,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       color: var(--primary-light);
     }
 
-    /* Controls panel */
     .controls-pane {
       display: flex;
       flex-direction: column;
@@ -477,7 +453,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <header class="page-header">
     <h1>Fantasy Map Generator</h1>
     <p>Procedurally generated worlds as scalable SVG. Pick a preset, adjust the seed, and explore.</p>
-    <p><a href="https://github.com/rhedak/fantasy-map-generator" target="_blank">View source</a></p>
+    <p><a href="https://github.com/rhedak/fantasy-map-generator" target="_blank" rel="noopener">View source</a></p>
   </header>
 
   <main>
@@ -517,7 +493,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <fieldset>
           <legend>Info</legend>
           <div id="world-info" style="font-size: 0.9em; line-height: 1.6;">
-            <p id="world-name" style="margin: 0 0 8px;"><strong>—</strong></p>
+            <p id="world-name" style="margin: 0 0 8px; font-weight: 600;">—</p>
             <p style="margin: 0; color: #666;">Select a world to see details</p>
           </div>
         </fieldset>
@@ -529,7 +505,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     const statusEl = document.getElementById('status');
     const galleryEl = document.getElementById('gallery');
     const editorEl = document.getElementById('editor-section');
-    const galleryEl2 = document.getElementById('gallery-section');
+    const gallerySection = document.getElementById('gallery-section');
     const previewEl = document.getElementById('preview');
     const seedSlider = document.getElementById('seed-slider');
     const seedValue = document.getElementById('seed-value');
@@ -542,11 +518,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     let currentPreset = null;
     let presets = [];
+    let renderTimer = null;
+    let renderSeq = 0;
 
     function setStatus(msg, isError = false) {
       statusEl.textContent = msg;
       statusEl.classList.toggle('visible', !!msg);
       statusEl.classList.toggle('error', isError);
+    }
+
+    function debounceRender() {
+      if (renderTimer) clearTimeout(renderTimer);
+      renderTimer = setTimeout(() => {
+        renderTimer = null;
+        renderMap();
+      }, 150);
     }
 
     async function loadPresets() {
@@ -560,6 +546,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     }
 
     function buildGallery() {
+      galleryEl.innerHTML = '';
       presets.forEach(p => {
         const card = document.createElement('div');
         card.className = 'gallery-card';
@@ -571,7 +558,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         if (p.preview) {
           preview.innerHTML = p.preview;
         } else {
-          preview.innerHTML = '<p style="text-align:center;color:#999;">Loading...</p>';
+          preview.innerHTML = '<p style="text-align:center;color:#999;">Preview unavailable</p>';
         }
 
         const title = document.createElement('h3');
@@ -587,17 +574,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     async function selectPreset(presetId) {
       currentPreset = presetId;
-      galleryEl2.style.display = 'none';
+      gallerySection.style.display = 'none';
       editorEl.classList.add('visible');
-      worldName.textContent = `<strong>${presets.find(p => p.id === presetId).name}</strong>`;
+      const preset = presets.find(p => p.id === presetId);
+      worldName.textContent = preset ? preset.name : presetId;
       await renderMap();
     }
 
     async function renderMap() {
       if (!currentPreset) return;
 
+      const seq = ++renderSeq;
       previewEl.innerHTML = '<p style="color: #999;">Generating map…</p>';
-      const seed = parseInt(seedSlider.value);
+      const seed = parseInt(seedSlider.value, 10);
 
       try {
         const res = await fetch('/api/render', {
@@ -605,6 +594,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ preset: currentPreset, seed }),
         });
+
+        if (seq !== renderSeq) return;
 
         if (!res.ok) {
           const err = await res.json();
@@ -615,7 +606,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
         const data = await res.json();
         previewEl.innerHTML = data.svg;
+        setStatus('');
       } catch (e) {
+        if (seq !== renderSeq) return;
         setStatus(`Error: ${e.message}`, true);
         previewEl.innerHTML = '<p style="color: #f44336;">Error rendering map</p>';
       }
@@ -626,7 +619,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       downloadSvgBtn.disabled = downloadPngBtn.disabled = true;
 
       try {
-        const seed = parseInt(seedSlider.value);
+        const seed = parseInt(seedSlider.value, 10);
         const res = await fetch('/api/download', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -656,41 +649,51 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     seedSlider.addEventListener('input', e => {
       seedValue.textContent = e.target.value;
-      renderMap();
+      debounceRender();
     });
 
     downloadSvgBtn.addEventListener('click', () => downloadMap('svg'));
     downloadPngBtn.addEventListener('click', () => downloadMap('png'));
 
     copyLinkBtn.addEventListener('click', () => {
-      const url = `${window.location.origin}?preset=${currentPreset}&seed=${seedSlider.value}`;
+      const url = `${window.location.origin}${window.location.pathname}?preset=${currentPreset}&seed=${seedSlider.value}`;
       navigator.clipboard.writeText(url).then(() => {
-        copyStatus.textContent = '✓ Copied!';
+        copyStatus.textContent = 'Copied!';
         setTimeout(() => { copyStatus.textContent = ''; }, 2000);
       });
     });
 
     backBtn.addEventListener('click', () => {
       editorEl.classList.remove('visible');
-      galleryEl2.style.display = 'block';
+      gallerySection.style.display = 'block';
       currentPreset = null;
     });
 
-    // Load URL params
     const params = new URLSearchParams(window.location.search);
     if (params.has('preset')) {
       seedSlider.value = params.get('seed') || 42;
       seedValue.textContent = seedSlider.value;
-      selectPreset(params.get('preset'));
     }
 
-    loadPresets();
+    loadPresets().then(() => {
+      if (params.has('preset')) {
+        selectPreset(params.get('preset'));
+      }
+    });
   </script>
 </body>
 </html>
 """
 
 
-if __name__ == "__main__":
+def main() -> None:
+    """Run the development GUI server."""
     app = create_app()
-    app.run(host="0.0.0.0", port=3000, debug=True)
+    host = os.environ.get("FMG_HOST", "127.0.0.1")
+    port = int(os.environ.get("FMG_PORT", "3000"))
+    debug = os.environ.get("FMG_DEBUG", "").lower() in {"1", "true", "yes"}
+    app.run(host=host, port=port, debug=debug)
+
+
+if __name__ == "__main__":
+    main()

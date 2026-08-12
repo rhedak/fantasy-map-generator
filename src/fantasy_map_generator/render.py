@@ -11,16 +11,14 @@ Components:
 Design principle: deterministic output via seeded RNG for reproducible maps.
 """
 
+from __future__ import annotations
+
 import math
 import random
 from pathlib import Path
-from typing import Optional
 from xml.sax.saxutils import escape as xml_escape
 
-from fantasy_map_generator.config import Palette
-
-
-# SVG primitive functions extracted from valley_of_mist_tools.mapgen
+from fantasy_map_generator.config import MapConfig
 
 
 def _polygon(
@@ -117,7 +115,7 @@ def _ellipse(
         attrs.append(f'stroke-opacity="{opacity}"')
     if dash:
         attrs.append(f'stroke-dasharray="{dash}"')
-    return f'<ellipse {" ".join(attrs)}/>'
+    return f"<ellipse {' '.join(attrs)}/>"
 
 
 def _rect(
@@ -149,9 +147,7 @@ _FILLER_WORDS = {"the", "no"}
 
 def _title_case(s: str) -> str:
     """Capitalize text except articles and Japanese particles."""
-    return " ".join(
-        w if w.lower() in _FILLER_WORDS else w[:1].upper() + w[1:] for w in s.split()
-    )
+    return " ".join(w if w.lower() in _FILLER_WORDS else w[:1].upper() + w[1:] for w in s.split())
 
 
 def _text(
@@ -170,7 +166,7 @@ def _text(
     label = _title_case(s)
     attrs = [
         f'x="{x:.1f}" y="{y:.1f}" font-size="{size}" text-anchor="{anchor}"',
-        'font-family="Georgia, \'Times New Roman\', serif"',
+        "font-family=\"Georgia, 'Times New Roman', serif\"",
     ]
     if italic:
         attrs.append('font-style="italic"')
@@ -208,7 +204,7 @@ def _line(
         attrs.append(f'stroke-opacity="{opacity}"')
     if dash:
         attrs.append(f'stroke-dasharray="{dash}"')
-    return f'<line {" ".join(attrs)}/>'
+    return f"<line {' '.join(attrs)}/>"
 
 
 def _leader_label(
@@ -232,9 +228,6 @@ def _leader_label(
     ]
 
 
-# Terrain generation functions
-
-
 def _mountains(
     rng: random.Random,
     center: tuple[float, float],
@@ -245,51 +238,32 @@ def _mountains(
     mouth_end_deg: float = 0.0,
     num_peaks: int = 54,
 ) -> list[str]:
-    """Generate a ring of jagged mountain peaks around a circular/elliptical bowl.
-
-    Args:
-        rng: Random number generator (seeded for reproducibility).
-        center: (cx, cy) center of the bowl.
-        radii: (rx, ry) radii of the ellipse.
-        mountain_color: Fill color for peaks.
-        mountain_stroke: Stroke color for peaks.
-        mouth_start_deg: Start angle of the opening (in degrees, y-down, 0=east).
-        mouth_end_deg: End angle of the opening.
-        num_peaks: Number of peaks to generate around the ring.
-
-    Returns:
-        List of SVG polygon elements.
-    """
+    """Generate a ring of jagged mountain peaks around a circular/elliptical bowl."""
     out: list[str] = []
     cx, cy = center
     rx, ry = radii
 
     for i in range(num_peaks):
         a_deg = 360.0 * i / num_peaks
-        # Skip the mouth opening
         if mouth_start_deg <= a_deg <= mouth_end_deg:
             continue
 
         a = math.radians(a_deg)
-        # Base point on the bowl rim
         bx = cx + (rx + 8 + rng.uniform(-3, 3)) * math.cos(a)
         by = cy + (ry + 8 + rng.uniform(-3, 3)) * math.sin(a)
 
-        # Tangent to the rim (perpendicular to radius)
         tx, ty = -math.sin(a), math.cos(a)
-
-        # Peak width
         w = 16 + rng.uniform(-3, 5)
 
-        # Peak apex (outside the bowl)
         apex_x = cx + (rx + 42 + rng.uniform(-6, 14)) * math.cos(a) + tx * rng.uniform(-6, 6)
         apex_y = cy + (ry + 42 + rng.uniform(-6, 14)) * math.sin(a) + ty * rng.uniform(-6, 6)
 
-        # Triangle points
         p1 = (bx + tx * w, by + ty * w)
         p2 = (bx - tx * w, by - ty * w)
 
-        out.append(_polygon([p1, (apex_x, apex_y), p2], fill=mountain_color, stroke=mountain_stroke, sw=1))
+        out.append(
+            _polygon([p1, (apex_x, apex_y), p2], fill=mountain_color, stroke=mountain_stroke, sw=1)
+        )
 
     return out
 
@@ -300,34 +274,35 @@ def _river(
     water_color: str,
     tributary_color: str | None = None,
 ) -> list[str]:
-    """Generate a river flowing through waypoints with multiple strokes for depth.
-
-    Args:
-        rng: Random number generator for slight variations.
-        waypoints: List of (x, y) waypoints the river flows through.
-        water_color: Main water stroke color.
-        tributary_color: Optional secondary water color for tributaries.
-
-    Returns:
-        List of SVG path elements.
-    """
+    """Generate a river flowing through waypoints with multiple strokes for depth."""
     out: list[str] = []
 
     if not waypoints or len(waypoints) < 2:
         return out
 
-    # Add slight jitter to waypoints for natural variation
     pts = [(x + rng.uniform(-2, 2), y + rng.uniform(-2, 2)) for x, y in waypoints]
 
-    # Multiple strokes for depth: wider opacity-reduced underlay, then sharper top
     out.append(_path(pts, stroke=water_color, sw=3.6, opacity=0.55))
     out.append(_path(pts, stroke=water_color, sw=1.4, opacity=0.4))
 
-    # Optional tributary color for second pass (e.g., lighter water)
     if tributary_color:
         out.append(_path(pts, stroke=tributary_color, sw=0.8, opacity=0.3))
 
     return out
+
+
+def _road(
+    waypoints: list[tuple[float, float]],
+    road_color: str,
+    road_dim: str,
+) -> list[str]:
+    """Generate a road path with a dim underlay and a lighter top stroke."""
+    if not waypoints or len(waypoints) < 2:
+        return []
+    return [
+        _path(waypoints, stroke=road_dim, sw=3.2, opacity=0.55),
+        _path(waypoints, stroke=road_color, sw=1.6, opacity=0.85, dash="6 4"),
+    ]
 
 
 def _forest(
@@ -337,18 +312,7 @@ def _forest(
     forest_color: str,
     num_clumps: int = 8,
 ) -> list[str]:
-    """Generate scattered forest/woodland clumps as triangles within a region.
-
-    Args:
-        rng: Random number generator.
-        center: (cx, cy) center of the forest region.
-        radii: (rx, ry) radii of the elliptical region.
-        forest_color: Fill color for trees.
-        num_clumps: Number of forest clumps to generate.
-
-    Returns:
-        List of SVG elements (triangles representing trees).
-    """
+    """Generate scattered forest/woodland clumps as triangles within a region."""
     out: list[str] = []
     cx, cy = center
     rx, ry = radii
@@ -360,7 +324,6 @@ def _forest(
     while placed < num_clumps and tries < max_tries:
         tries += 1
 
-        # Random point within ellipse using sqrt(r) for even distribution
         a = rng.uniform(0, math.tau)
         r = rng.uniform(0, 1) ** 0.5
         cluster_x = cx + math.cos(a) * rx * 0.85 * r
@@ -368,13 +331,11 @@ def _forest(
 
         placed += 1
 
-        # Place individual trees as small triangles
         for _ in range(rng.randint(9, 15)):
             ox = cluster_x + rng.uniform(-16, 16)
             oy = cluster_y + rng.uniform(-12, 12)
             s = 4 + rng.uniform(-1, 2.5)
 
-            # Triangle pointing up (tree shape)
             out.append(
                 _polygon(
                     [(ox, oy - s), (ox - 2.8, oy + s * 0.6), (ox + 2.8, oy + s * 0.6)],
@@ -394,20 +355,8 @@ def _settlement(
     roof_color: str,
     scale: float = 1.0,
 ) -> list[str]:
-    """Render a small settlement/hamlet at (cx, cy) as scattered buildings.
-
-    Args:
-        rng: Random number generator.
-        cx, cy: Center coordinates.
-        building_color: Fill color for building walls.
-        roof_color: Fill color for roofs.
-        scale: Scale factor for building sizes.
-
-    Returns:
-        List of SVG rect elements (walls and roofs).
-    """
+    """Render a small settlement/hamlet at (cx, cy) as scattered buildings."""
     out: list[str] = []
-    # Small cluster of 2-4 buildings scattered around the center
     num_buildings = rng.randint(2, 4)
     for _ in range(num_buildings):
         ox = cx + rng.uniform(-9, 9) * scale
@@ -415,21 +364,31 @@ def _settlement(
         w = rng.uniform(2.8, 4.2) * scale
         h = 2.6 * scale
 
-        # Building wall
         out.append(_rect(ox, oy, w, h, fill=building_color, opacity=0.9))
-        # Roof (slightly wider, positioned above)
         out.append(
-            _rect(ox - 0.3 * scale, oy - 1.3 * scale, w + 0.6 * scale, 1.6 * scale, fill=roof_color, opacity=0.9)
+            _rect(
+                ox - 0.3 * scale,
+                oy - 1.3 * scale,
+                w + 0.6 * scale,
+                1.6 * scale,
+                fill=roof_color,
+                opacity=0.9,
+            )
         )
 
     return out
 
 
+def _is_river_route(name: str) -> bool:
+    key = name.lower()
+    return "river" in key or key.startswith("water")
+
+
 def render_map(
-    config: Optional["MapConfig"] = None,
+    config: MapConfig | None = None,
     seed: int = 7,
-    width: Optional[int] = None,
-    height: Optional[int] = None,
+    width: int | None = None,
+    height: int | None = None,
 ) -> str:
     """Render a fantasy map as an SVG document string.
 
@@ -443,10 +402,8 @@ def render_map(
         SVG document as a string.
 
     Raises:
-        ValueError: If dimensions are invalid.
+        ValueError: If dimensions or config are invalid.
     """
-    from fantasy_map_generator.config import MapConfig
-
     if config is None:
         config = MapConfig()
 
@@ -456,51 +413,72 @@ def render_map(
     if canvas_width <= 0 or canvas_height <= 0:
         raise ValueError("canvas dimensions must be positive")
 
+    # Validate against effective canvas size
+    check = MapConfig(
+        name=config.name,
+        canvas_width=canvas_width,
+        canvas_height=canvas_height,
+        locations=config.locations,
+        routes=config.routes,
+        palette=config.palette,
+    )
+    check.validate()
+
     rng = random.Random(seed)
     palette = config.palette
 
-    # Build gradient stops from palette
     grad_stops = "".join(
-        f'<stop offset="{offset*100}%" stop-color="{color}"/>'
+        f'<stop offset="{offset * 100}%" stop-color="{color}"/>'
         for offset, color in palette.gradient_stops
     )
 
-    # Layer list: backgrounds first, then terrain, then features, then labels
-    layers = [
-        f'<rect width="{canvas_width}" height="{canvas_height}" fill="{palette.background}"/>',
-    ]
-
-    # Generate terrain: mountains, rivers, forests, etc.
-    # For now, generate mountains as a basic ring. TODO: add rivers, forests, settlements
     bowl_center = (canvas_width / 2, canvas_height / 2)
     bowl_radii = (canvas_width * 0.35, canvas_height * 0.35)
 
-    mountain_peaks = _mountains(
-        rng,
-        center=bowl_center,
-        radii=bowl_radii,
-        mountain_color=palette.mountain,
-        mountain_stroke=palette.mountain_stroke,
-        mouth_start_deg=92.0,
-        mouth_end_deg=178.0,
+    layers: list[str] = [
+        f'<rect width="{canvas_width}" height="{canvas_height}" fill="{palette.background}"/>',
+        f'<ellipse cx="{bowl_center[0]:.1f}" cy="{bowl_center[1]:.1f}" '
+        f'rx="{bowl_radii[0]:.1f}" ry="{bowl_radii[1]:.1f}" fill="url(#mist)" opacity="0.35"/>',
+    ]
+
+    layers.extend(
+        _mountains(
+            rng,
+            center=bowl_center,
+            radii=bowl_radii,
+            mountain_color=palette.mountain,
+            mountain_stroke=palette.mountain_stroke,
+            mouth_start_deg=92.0,
+            mouth_end_deg=178.0,
+        )
     )
-    layers.extend(mountain_peaks)
 
-    # Render settlements from config locations
-    for name, (x, y) in config.locations.items():
-        settlement_layers = _settlement(
-            rng, x, y, palette.settlement, palette.settlement_roof, scale=1.0
+    layers.extend(
+        _forest(
+            rng,
+            center=bowl_center,
+            radii=(bowl_radii[0] * 0.75, bowl_radii[1] * 0.75),
+            forest_color=palette.forest,
+            num_clumps=8,
         )
-        layers.extend(settlement_layers)
+    )
 
-    # Add location labels
-    for name, (x, y) in config.locations.items():
-        # Label positioned below settlement
-        layers.append(
-            _text(x, y + 20, name, size=11, anchor="middle", fill=palette.text_dim)
+    for route_name, waypoints in config.routes.items():
+        if _is_river_route(route_name):
+            layers.extend(
+                _river(rng, waypoints, palette.water, tributary_color=palette.water_tributary)
+            )
+        else:
+            layers.extend(_road(waypoints, palette.road, palette.road_dim))
+
+    for _name, (x, y) in config.locations.items():
+        layers.extend(
+            _settlement(rng, x, y, palette.settlement, palette.settlement_roof, scale=1.0)
         )
 
-    # Title
+    for name, (x, y) in config.locations.items():
+        layers.append(_text(x, y + 20, name, size=11, anchor="middle", fill=palette.text_dim))
+
     layers.append(
         _text(
             canvas_width // 2,
@@ -512,9 +490,8 @@ def render_map(
         )
     )
 
-    # Assemble SVG
     svg_body = "\n  ".join(layers)
-    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" width="{canvas_width}" height="{canvas_height}" viewBox="0 0 {canvas_width} {canvas_height}">
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{canvas_width}" height="{canvas_height}" viewBox="0 0 {canvas_width} {canvas_height}">
   <defs>
     <radialGradient id="mist" cx="50%" cy="50%" r="50%">
       {grad_stops}
@@ -522,19 +499,29 @@ def render_map(
   </defs>
   {svg_body}
 </svg>'''
-    return svg
 
 
-def write_map(output_path: Path, seed: int = 7, want_png: bool = True) -> None:
+def write_map(
+    output_path: Path,
+    seed: int = 7,
+    want_png: bool = True,
+    config: MapConfig | None = None,
+) -> None:
     """Write a generated map to SVG (and optionally PNG).
 
     Args:
         output_path: Path prefix (will add .svg and .png suffixes).
         seed: Random seed for the map.
         want_png: If True, attempt to export PNG via cairosvg.
+        config: Optional world configuration. Defaults to Valley of Mists.
     """
+    if config is None:
+        from fantasy_map_generator.worlds import VALLEY_CONFIG
+
+        config = VALLEY_CONFIG
+
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    svg = render_map(seed=seed)
+    svg = render_map(config=config, seed=seed)
 
     svg_path = output_path.with_suffix(".svg")
     svg_path.write_text(svg, encoding="utf-8")
@@ -543,6 +530,7 @@ def write_map(output_path: Path, seed: int = 7, want_png: bool = True) -> None:
     if want_png:
         try:
             import cairosvg
+
             png_path = output_path.with_suffix(".png")
             png_path.write_bytes(cairosvg.svg2png(bytestring=svg.encode(), scale=2))
             print(f"wrote {png_path}")

@@ -1,73 +1,57 @@
 # Fantasy Map Generator
 
-A procedural fantasy map generator that produces parametric SVG maps of imaginary worlds. The project includes a Python package (with PNG export support) and a planned interactive web GUI.
+A procedural fantasy map generator that produces parametric SVG maps of imaginary worlds. Python package (CLI + library), optional PNG export, and interactive Flask GUI.
 
 ## Status
 
-**Phase 1 (Scaffolding):** Project structure initialized, CLI and stub GUI in place.
-
-**Phase 2 (Extraction & Refactoring):** Planned. Extract and generalize the map generation code from `../valley_of_mist_tools/mapgen.py`.
-
-**Phase 3 (Features):** Terrain generation, settlement placement, water features, labels, etc.
-
-**Phase 4 (GUI):** Web interface for interactive map parameter tuning.
+- **Phase 1–2:** Done (scaffold, extraction, MapConfig/Palette, terrain generators).
+- **Phase 3:** In progress (rivers/roads/forests wired from config; richer algorithms next).
+- **Phase 4:** Core GUI done (gallery, seed, preview, download, share URLs).
+- **Phase 5–6:** Advanced GUI and deeper docs later.
 
 ## Architecture
 
-- **Python Package** (`src/fantasy_map_generator/`): Core rendering engine, deterministic via seeded RNG.
-  - `render.py`: SVG generation (will be extracted from Valley of Mists).
-  - `config.py`: MapConfig data model for world geography and palette.
-  - `cli.py`: Command-line interface.
-  - `gui.py`: Flask web app (under development).
+- **Package** (`src/fantasy_map_generator/`):
+  - `render.py` — SVG primitives + terrain + `render_map` / `write_map`
+  - `config.py` — `MapConfig`, `Palette`
+  - `cli.py` — `--world`, `--seed`, `--out`, `--no-png`
+  - `gui.py` — Flask app on `127.0.0.1:3000` by default
+  - `worlds/` — presets + `WORLDS` registry (`valley`, `desert`, `tropical`, `arctic`, `autumn`)
 
-- **Tests** (`tests/`): Regression and smoke tests.
+- **Tests** (`tests/`): smoke, CLI, GUI API.
 
-- **Docs** (`docs/`): Design documents, architecture notes, world-building templates.
+- **Docs** (`docs/`): PLAN, ARCHITECTURE, EXTRACTION_GUIDE.
 
 ## Design Principles
 
-1. **Configuration-driven:** MapConfig objects define geography and palette; rendering code is world-agnostic.
-2. **Deterministic:** Same seed always produces the same map (good for testing and iteration).
-3. **Modular terrain:** Mountains, rivers, forests, settlements are independent, reusable functions.
-4. **Spatial collision detection:** Features respect constraints (roads, mountains, water) to avoid overlap.
-5. **SVG-first:** No image files; purely parametric drawing. PNG export is optional (via cairosvg).
-
-## Extraction Plan
-
-The codebase will be seeded from `../valley_of_mist_tools/mapgen.py` in this phase:
-
-1. **SVG primitives** (lines 284–410 in mapgen.py): Extract `_polygon`, `_path`, `_circle`, `_text`, etc. as-is; these are reusable.
-2. **Terrain generators** (lines 425–723): Extract and parameterize `_mountains`, `_river`, `_forest`, `_mist_wall_band`, etc.
-3. **Palette abstraction**: Generalize the color constants (lines 39–59) into a `Palette` dataclass.
-4. **Geography model**: Generalize the LAYOUT section (lines 73–279) into MapConfig.
-5. **Refactor render_map()**: Break into layer-based methods; make seed and canvas size configurable.
-
-See `docs/extraction_plan.md` for detailed steps and phase-wise milestones.
+1. **Configuration-driven:** MapConfig holds geography and palette; renderer is world-agnostic.
+2. **Deterministic:** Same seed → same map.
+3. **Modular terrain:** Mountains, rivers, forests, settlements are independent functions.
+4. **Routes convention:** keys containing `river` (or starting with `water`) → water; else roads.
+5. **SVG-first:** PNG via cairosvg is optional/best-effort.
 
 ## Working Conventions
 
 - Do NOT commit unless asked.
-- When testing, run `uv sync` once before the first test run.
-- SVG rendering is the deliverable; PNG is optional and always best-effort (cairosvg may not be available).
-- Keep the SVG modular: one function per terrain type makes it easy to add or disable features.
+- Run `uv sync` once before the first test run.
+- Keep one function per terrain type.
+- GUI binds to localhost by default; use `FMG_HOST` / `FMG_PORT` / `FMG_DEBUG` to override.
 
 ## Building and Running
 
 ```bash
-# Install dependencies
 uv sync
 
-# Generate a map from the command line
-python -m fantasy_map_generator --out map.svg --seed 42
+python -m fantasy_map_generator --out map --seed 42 --world valley --no-png
 
-# Run tests
 pytest
+ruff check src tests
 
-# Start the web GUI (under development)
 python -m fantasy_map_generator.gui
+# or: ./gui.sh start  → http://localhost:3000
 ```
 
 ## See Also
 
-- **Sister project:** `../valley_of_mist_tools/mapgen.py` (the source being extracted).
-- **Related:** `../anime-character-creator` (similar architecture: Python package + optional GUI + SVG generation).
+- Sister project: `../valley_of_mist_tools/mapgen.py`
+- Related: `../anime-character-creator`

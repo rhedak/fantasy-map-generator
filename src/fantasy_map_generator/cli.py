@@ -2,6 +2,7 @@
 
 Usage:
     fantasy-map-generator --out map.svg --seed 42
+    fantasy-map-generator --world desert --seed 7 --no-png
     fantasy-map-generator --help
 """
 
@@ -10,13 +11,12 @@ import sys
 from pathlib import Path
 
 from fantasy_map_generator.render import write_map
+from fantasy_map_generator.worlds import WORLDS
 
 
 def main() -> None:
     """Parse arguments and generate a map."""
-    ap = argparse.ArgumentParser(
-        description="Generate a procedural fantasy world map as SVG"
-    )
+    ap = argparse.ArgumentParser(description="Generate a procedural fantasy world map as SVG")
     ap.add_argument(
         "--out",
         default="map",
@@ -29,6 +29,12 @@ def main() -> None:
         help="random seed for deterministic output (default: 7)",
     )
     ap.add_argument(
+        "--world",
+        choices=sorted(WORLDS.keys()),
+        default="valley",
+        help="world preset to render (default: valley)",
+    )
+    ap.add_argument(
         "--no-png",
         action="store_true",
         help="skip PNG export (only write SVG)",
@@ -36,7 +42,12 @@ def main() -> None:
     args = ap.parse_args()
 
     try:
-        write_map(Path(args.out), seed=args.seed, want_png=not args.no_png)
+        write_map(
+            Path(args.out),
+            seed=args.seed,
+            want_png=not args.no_png,
+            config=WORLDS[args.world],
+        )
     except Exception as e:
         print(f"error: {e}", file=sys.stderr)
         sys.exit(1)

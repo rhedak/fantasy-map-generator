@@ -9,7 +9,6 @@ rendered without code changes—just swap the MapConfig.
 """
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
 
 
 @dataclass
@@ -53,7 +52,7 @@ class Palette:
     palace_trim: str = "#c7ceda"
 
     # Gradient for mist lighting (used in radial gradient)
-    gradient_stops: List[tuple[float, str]] = field(
+    gradient_stops: list[tuple[float, str]] = field(
         default_factory=lambda: [
             (0.00, "#f3f6fa"),
             (0.28, "#cdd6e0"),
@@ -76,8 +75,8 @@ class MapConfig:
             key -> (x, y) coordinate.
         routes: Named paths connecting locations.
             key -> list of (x, y) waypoints in order.
+            Keys containing "river" are drawn as water; others as roads.
         palette: Color scheme.
-        seed: Random seed for deterministic output.
     """
 
     name: str = "Untitled Fantasy World"
@@ -85,8 +84,8 @@ class MapConfig:
     canvas_height: int = 700
 
     # Geography
-    locations: Dict[str, Tuple[float, float]] = field(default_factory=dict)
-    routes: Dict[str, List[Tuple[float, float]]] = field(default_factory=dict)
+    locations: dict[str, tuple[float, float]] = field(default_factory=dict)
+    routes: dict[str, list[tuple[float, float]]] = field(default_factory=dict)
 
     # Rendering
     palette: Palette = field(default_factory=Palette)
@@ -99,5 +98,9 @@ class MapConfig:
         """
         if self.canvas_width <= 0 or self.canvas_height <= 0:
             raise ValueError("canvas dimensions must be positive")
-        if not self.locations:
-            raise ValueError("at least one location must be defined")
+        for name, (x, y) in self.locations.items():
+            if not (0 <= x <= self.canvas_width and 0 <= y <= self.canvas_height):
+                raise ValueError(f"location {name!r} is outside the canvas")
+        for name, points in self.routes.items():
+            if len(points) < 2:
+                raise ValueError(f"route {name!r} needs at least two waypoints")

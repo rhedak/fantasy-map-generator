@@ -24,13 +24,18 @@ uv sync
 ### Generate a Map
 
 ```bash
-# From the command line
-python -m fantasy_map_generator --out my_map.svg --seed 42
+# From the command line (default world: valley)
+python -m fantasy_map_generator --out my_map --seed 42 --no-png
+
+# Choose a world preset
+python -m fantasy_map_generator --world desert --seed 7 --out desert_map --no-png
 
 # From Python
 from fantasy_map_generator.render import render_map
-svg = render_map(seed=42)
-print(svg[:100])  # First 100 chars of SVG
+from fantasy_map_generator.worlds import VALLEY_CONFIG
+
+svg = render_map(config=VALLEY_CONFIG, seed=42)
+print(svg[:100])
 ```
 
 ### Launch the Interactive GUI
@@ -38,7 +43,7 @@ print(svg[:100])  # First 100 chars of SVG
 **Option 1: Using the control script (recommended)**
 ```bash
 ./gui.sh start
-# Opens http://localhost:5000
+# Opens http://localhost:3000
 ```
 
 **Option 2: Direct Python**
@@ -54,48 +59,47 @@ python -m fantasy_map_generator.gui
 ./gui.sh logs      # Follow server logs
 ```
 
+Optional env vars: `FMG_HOST` (default `127.0.0.1`), `FMG_PORT` (default `3000`), `FMG_DEBUG=1`.
+
 The GUI features:
-- **Map gallery:** Choose from presets (Valley of Mists, Random world)
-- **Seed slider:** Adjust seed to explore variations (0–10000)
-- **Live preview:** Real-time SVG rendering as you adjust parameters
-- **Export buttons:** Download as SVG or PNG (if cairosvg installed)
-- **Shareable URLs:** Copy links like `?preset=valley&seed=42` to share maps
+- **Map gallery:** Presets (Valley, Desert, Tropical, Arctic, Autumn, Random)
+- **Seed slider:** Explore variations (0–10000), debounced live preview
+- **Export:** Download SVG or PNG (if cairosvg installed)
+- **Shareable URLs:** `?preset=valley&seed=42`
 
 ## Features
 
-- **Procedural generation:** Mountains, rivers, forests, settlements, roads—all from a seed.
-- **Deterministic:** Same seed produces the same map, every time.
-- **Configuration-driven:** Define worlds in Python; render without touching code.
+- **Procedural generation:** Mountains, rivers, forests, settlements, roads—from a seed.
+- **Deterministic:** Same seed produces the same map every time.
+- **Configuration-driven:** Define worlds in Python; render without touching core code.
 - **SVG-native:** Pure text output, scalable to any resolution.
-- **Optional PNG:** Export to PNG via cairosvg (best-effort).
-- **Interactive GUI:** Parameter sliders and preview (in development).
+- **Optional PNG:** Export via cairosvg (best-effort).
+- **Interactive GUI:** Gallery, seed control, preview, download.
 
 ## Architecture
 
-**Core Components:**
+**Core components:**
 
-- `render.py`: SVG generation engine with primitives and terrain algorithms.
-- `config.py`: MapConfig dataclass defining world geography and palette.
-- `cli.py`: Command-line interface.
-- `gui.py`: Flask web app (under development).
+- `render.py` — SVG primitives and terrain generators
+- `config.py` — `MapConfig` and `Palette` dataclasses
+- `cli.py` — command-line interface (`--world`, `--seed`, `--out`)
+- `gui.py` — Flask web app
+- `worlds/` — preset world definitions + `WORLDS` registry
 
-**World Definitions:**
-
-- `worlds/valley.py`: Extracted from the Valley of Mists webnovel.
-- More example worlds planned (desert region, archipelago, temperate kingdom, etc.).
+**World presets:** `valley`, `desert`, `tropical`, `arctic`, `autumn`
 
 ## Development Phases
 
-| Phase | Status | Effort | Milestone |
-|-------|--------|--------|-----------|
-| 1. Scaffolding | ✅ Done | 4h | Project structure, CLI, tests |
-| 2. Extraction & Refactor | ✅ Done | ~10h | SVG primitives, Palette, MapConfig, terrain generators (mountains, river, forest, settlements) |
-| 3. Terrain Algorithms | 📋 Next | 20–30h | Enhanced settlement placement, road networks, water features, decorative elements |
-| 4. Web GUI | ✅ Core | ~8h | Gallery, seed slider, live preview, download, URL sharing (expandable) |
-| 5. Advanced GUI | 📋 Later | 20–30h | Location editor, terrain density sliders, palette picker, custom world builder |
-| 6. Documentation | 📋 Ongoing | 12–18h | Tutorials, API docs, example worlds, world-building guide |
+| Phase | Status | Milestone |
+|-------|--------|-----------|
+| 1. Scaffolding | ✅ Done | Project structure, CLI, tests |
+| 2. Extraction & Refactor | ✅ Done | Primitives, Palette, MapConfig, terrain generators |
+| 3. Terrain Algorithms | 🔄 In progress | Routes wired; richer settlement/water still open |
+| 4. Web GUI | ✅ Core | Gallery, seed slider, preview, download, URL sharing |
+| 5. Advanced GUI | 📋 Later | Location editor, density sliders, palette picker |
+| 6. Documentation | 📋 Ongoing | Tutorials, API docs, world-building guide |
 
-See `docs/PLAN.md` for detailed roadmap and decision points.
+See `docs/PLAN.md` for the detailed roadmap.
 
 ## Usage Examples
 
@@ -103,7 +107,7 @@ See `docs/PLAN.md` for detailed roadmap and decision points.
 
 ```python
 from fantasy_map_generator.render import render_map
-from worlds.valley import VALLEY_CONFIG
+from fantasy_map_generator.worlds import VALLEY_CONFIG
 
 svg = render_map(config=VALLEY_CONFIG, seed=7)
 with open("valley.svg", "w") as f:
@@ -114,6 +118,7 @@ with open("valley.svg", "w") as f:
 
 ```python
 from fantasy_map_generator.config import MapConfig, Palette
+from fantasy_map_generator.render import render_map
 
 my_world = MapConfig(
     name="The Shattered Isles",
@@ -136,78 +141,36 @@ my_world = MapConfig(
     ),
 )
 
-from fantasy_map_generator.render import render_map
 svg = render_map(config=my_world, seed=123)
 ```
+
+Route keys containing `river` (or starting with `water`) are drawn as water; all other routes are roads.
 
 ### Export to PNG
 
 ```bash
-# Requires cairosvg: pip install cairosvg
-python -m fantasy_map_generator --out my_map.svg
+# Requires cairosvg (included in dev extras via uv sync)
+python -m fantasy_map_generator --out my_map --seed 42
 # Creates my_map.svg and my_map.png (2x scale)
 ```
 
 ## Testing
 
 ```bash
-# Run all tests
 pytest
-
-# Run specific test
-pytest tests/test_smoke.py::test_svg_renders -v
-
-# Test coverage
-pytest --cov=src/fantasy_map_generator
+pytest tests/test_smoke.py -v
+ruff check src tests
 ```
-
-## Architecture & Design
-
-See `docs/ARCHITECTURE.md` for:
-- System overview and data flow
-- Component design (MapConfig, Palette, terrain generators)
-- Extensibility patterns (adding new terrain types, worlds, features)
-- Testing strategy
-- Performance considerations
-
-## Extraction from Valley of Mists
-
-The codebase builds on `../valley_of_mist_tools/mapgen.py`, extracting and generalizing its proven map generation algorithms.
-
-**For detailed extraction steps:** See `docs/EXTRACTION_GUIDE.md`
-
-**For code review of the Valley source:** See `mapgen_review.md` in the parent directory
 
 ## Dependencies
 
 **Core:** None (pure stdlib).
 
 **Optional:**
-- `cairosvg` (PNG export; fails gracefully if missing)
-- `flask` (GUI; fails gracefully if missing)
+- `cairosvg` (PNG export)
+- `flask` (GUI)
 
-**Development:**
-- `pytest`, `ruff` (testing and linting)
-- `pdoc` (API documentation)
-
-## Performance
-
-Typical map generation times on modern hardware:
-
-- **SVG generation:** ~100ms
-- **PNG export (cairosvg):** ~500ms–1s
-
-Interactive GUI targets 200ms per update (responsive to slider input).
-
-## Roadmap
-
-**Phase 2 (Next):** Extract and generalize the Valley code into MapConfig and terrain algorithms.
-
-**Phase 3:** Enhanced settlement placement, road network routing, water simulation.
-
-**Phase 4:** Web GUI with interactive parameter controls and real-time preview.
-
-**Phase 5:** Tutorials, example worlds, API documentation.
+**Development:** `pytest`, `ruff`, `pdoc`
 
 ## License
 
@@ -215,19 +178,13 @@ MIT. See LICENSE file.
 
 ## See Also
 
-- **Companion project:** `../anime-character-creator` (similar architecture: Python package + GUI + SVG generation)
-- **Source material:** `../valley_of_mist/` (the webnovel being illustrated)
+- **Companion project:** `../anime-character-creator`
+- **Source material:** `../valley_of_mist/` (webnovel), `../valley_of_mist_tools/mapgen.py`
 
 ## Contributing
 
-This project is in early development. Architecture and APIs may change.
+Early development; APIs may change.
 
-When working on this project:
-- **Do not commit** unless asked (use `git status` to track work).
-- **Run tests** before submitting changes (`pytest`).
-- **Follow the PLAN:** Phases are sequential; check Phase status before starting new work.
-- **Update docs:** Every new feature or design decision should be documented.
-
-## Questions?
-
-See `CLAUDE.md` for project context and working conventions.
+- Do not commit unless asked.
+- Run `pytest` and `ruff check src tests` before submitting.
+- Follow `docs/PLAN.md` phase order when adding large features.

@@ -17,7 +17,14 @@ function start_server() {
 
   echo "Starting Fantasy Map Generator GUI..."
   cd "$PROJECT_DIR"
-  python -m fantasy_map_generator.gui > "$LOG_FILE" 2>&1 &
+  # Prefer project venv if present
+  if [ -x "$PROJECT_DIR/.venv/bin/python" ]; then
+    PYTHON="$PROJECT_DIR/.venv/bin/python"
+  else
+    PYTHON="python"
+  fi
+  FMG_HOST="${FMG_HOST:-127.0.0.1}" FMG_PORT="$PORT" \
+    "$PYTHON" -m fantasy_map_generator.gui > "$LOG_FILE" 2>&1 &
   echo $! > "$PID_FILE"
 
   # Wait for server to start
