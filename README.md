@@ -86,7 +86,17 @@ The GUI features:
 - `gui.py` — Flask web app
 - `worlds/` — preset world definitions + `WORLDS` registry
 
-**World presets:** `valley`, `desert`, `tropical`, `arctic`, `autumn`
+**World presets (distinct archetypes):**
+
+| id | Archetype | Notes |
+|----|-----------|--------|
+| `valley` | Mist bowl | Story locations, ring peaks, cool mist |
+| `desert` | Arid corridor | Broken ridge, dunes, oases, parchment decor |
+| `tropical` | Archipelago | Sea + waves, multi-island, stacked peaks |
+| `arctic` | Ice coast / fjord | Ice shelf polygon, cold sea, sparse conifers |
+| `autumn` | Inland kingdom | Forest stands, edge range, cartouche/border |
+
+CLI knobs: `--detail 0-1`, `--coast-roughness 0-1`. GUI exposes the same + shareable URL params.
 
 ## Development Phases
 

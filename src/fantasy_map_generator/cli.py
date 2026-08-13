@@ -39,6 +39,19 @@ def main() -> None:
         action="store_true",
         help="skip PNG export (only write SVG)",
     )
+    ap.add_argument(
+        "--detail",
+        type=float,
+        default=None,
+        help="detail density 0-1 (overrides world default)",
+    )
+    ap.add_argument(
+        "--coast-roughness",
+        type=float,
+        default=None,
+        dest="coast_roughness",
+        help="coastline roughness 0-1 (overrides world default)",
+    )
     args = ap.parse_args()
 
     try:
@@ -47,6 +60,8 @@ def main() -> None:
             seed=args.seed,
             want_png=not args.no_png,
             config=WORLDS[args.world],
+            detail=args.detail,
+            coast_roughness=args.coast_roughness,
         )
     except Exception as e:
         print(f"error: {e}", file=sys.stderr)

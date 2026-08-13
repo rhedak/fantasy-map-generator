@@ -3,7 +3,8 @@
 from pathlib import Path
 
 from fantasy_map_generator.cli import main
-from fantasy_map_generator.render import write_map
+from fantasy_map_generator.config import MapConfig
+from fantasy_map_generator.render import render_map, write_map
 from fantasy_map_generator.worlds import DESERT_CONFIG, VALLEY_CONFIG
 
 
@@ -19,16 +20,8 @@ def test_write_map_default_is_valley(tmp_path: Path):
     write_map(out, seed=7, want_png=False)
     svg = out.with_suffix(".svg").read_text(encoding="utf-8")
     assert "Valley" in svg or "Mists" in svg or "Kiriguchi" in svg or "Basin" in svg
-    # ensure valley config locations influence output size vs empty
-    emptyish = render_len_without_locations()
-    assert len(svg) > emptyish * 0.5
-
-
-def render_len_without_locations() -> int:
-    from fantasy_map_generator.config import MapConfig
-    from fantasy_map_generator.render import render_map
-
-    return len(render_map(config=MapConfig(name="Empty"), seed=7))
+    empty = len(render_map(config=MapConfig(name="Empty"), seed=7))
+    assert len(svg) > empty * 0.5
 
 
 def test_cli_main(tmp_path: Path, monkeypatch):
@@ -44,6 +37,8 @@ def test_cli_main(tmp_path: Path, monkeypatch):
             "--world",
             "arctic",
             "--no-png",
+            "--detail",
+            "0.4",
         ],
     )
     assert main() is None
@@ -53,5 +48,16 @@ def test_cli_main(tmp_path: Path, monkeypatch):
 
 def test_valley_config_identity():
     assert VALLEY_CONFIG.name == "Valley of Mists"
-    assert "river" in VALLEY_CONFIG.routes
+    assert VALLEY_CONFIG.layout == "bowl"
+    assert VALLEY_CONFIG.style_kit == "valley_parity"
+    assert "kasumikyo" in VALLEY_CONFIG.places
     assert "capital_road" in VALLEY_CONFIG.routes
+
+
+def test_cli_valley_matches_golden(tmp_path: Path):
+    baseline = Path(__file__).parent / "baselines" / "valley_settled.svg"
+    assert baseline.is_file()
+    out = tmp_path / "valley_cli"
+    write_map(out, seed=7, want_png=False, config=VALLEY_CONFIG)
+    svg = out.with_suffix(".svg").read_text(encoding="utf-8")
+    assert svg == baseline.read_text(encoding="utf-8")

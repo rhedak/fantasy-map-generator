@@ -5,9 +5,9 @@ A procedural fantasy map generator that produces parametric SVG maps of imaginar
 ## Status
 
 - **Phase 1–2:** Done (scaffold, extraction, MapConfig/Palette, terrain generators).
-- **Phase 3:** In progress (rivers/roads/forests wired from config; richer algorithms next).
-- **Phase 4:** Core GUI done (gallery, seed, preview, download, share URLs).
-- **Phase 5–6:** Advanced GUI and deeper docs later.
+- **Phase 3:** Template variation landed (layouts, style kits, biomes, tier icons, decor).
+- **Phase 4:** Core GUI done (gallery, seed, detail/roughness, preview, download, share URLs).
+- **Phase 5–6:** Advanced GUI and deeper docs later. See `docs/TODO.md`.
 
 ## Architecture
 

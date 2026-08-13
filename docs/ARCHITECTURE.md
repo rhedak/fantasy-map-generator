@@ -3,14 +3,32 @@
 ## System Overview
 
 ```
-MapConfig (world data)
+MapConfig (layout, style_kit, landmass, biomes, places, routes, decor, palette)
     ↓
-MapRenderer (generates SVG)
+render_map() layer pipeline (seeded RNG)
     ↓
-SVG Document
+SVG Document (+ defs: mist gradient, wave pattern, paper grain)
     ↓ (optional)
 PNG (via cairosvg)
 ```
+
+### Layer order
+
+1. Background (paper / sea + waves)
+2. Landmass fills + coastline
+3. Biome underlays (+ dune/swamp/ice hatch)
+4. Mountains (ring | ridge | stacked)
+5. Vegetation stands (triangle / conifer / canopy / stamp)
+6. Routes (river / road / trail / ferry)
+7. Place icons by tier
+8. Labels + region names
+9. Title / cartouche
+10. Decor (border, compass, scale)
+
+### Style kits
+
+`mist_bowl`, `layered_island`, `ink_parchment`, `watercolor`, `hypsometric`, `rpg_symbols`  
+(Kits influence mountain stamp style, paper grain, and sea treatment together with `layout`.)
 
 ---
 
