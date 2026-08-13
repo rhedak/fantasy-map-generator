@@ -116,8 +116,8 @@ Related: `docs/TODO.md` (template variation), `docs/ARCHITECTURE.md`.
 ## How to try v1
 
 ```bash
-./gui.sh restart
-# open http://localhost:3000
+./web-stage.sh --serve
+# open http://localhost:8000
 # pick a world → Elements → capital → click map
 # Select mode → drag place → edit name/tier → World JSON
 ```

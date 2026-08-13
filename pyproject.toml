@@ -15,16 +15,16 @@ classifiers = [
 ]
 
 # The SVG generation has no dependencies: a map is text, written with stdlib.
-# PNG export needs cairo (optional). GUI needs a web framework (optional).
+# PNG export needs cairo (optional). The interactive web tool runs in the
+# browser via Pyodide, so it needs no server-side framework.
 dependencies = []
 
 [project.optional-dependencies]
 png = ["cairosvg>=2.7"]
-gui = ["flask>=3.0"]
 
 [dependency-groups]
 dev = [
-    "fantasy-map-generator[png,gui]",
+    "fantasy-map-generator[png]",
     "pytest>=8",
     "ruff>=0.14",
     "pdoc>=15",
@@ -45,8 +45,8 @@ packages = ["src/fantasy_map_generator"]
 
 [tool.ruff]
 line-length = 100
-src = ["src", "tests"]
-extend-exclude = ["*.md"]
+src = ["src", "tests", "web"]
+extend-exclude = ["*.md", "out"]
 
 [tool.ruff.lint]
 select = [

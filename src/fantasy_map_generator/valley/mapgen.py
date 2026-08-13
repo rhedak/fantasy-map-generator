@@ -10,6 +10,7 @@ import argparse
 import math
 import random
 import sys
+import threading
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
@@ -46,6 +47,61 @@ GRAD_STOPS = (
     (0.80, "#5c6a80"),
     (1.00, "#3a4254"),
 )
+
+# --- palette override (editor colors) --------------------------------------
+
+# Canonical renderer globals -> MapConfig Palette field names. When a Palette is
+# passed to render_map, these module globals are swapped for the duration of the
+# render so every helper keeps reading the same names (RNG call order untouched).
+_PALETTE_FIELDS: dict[str, str] = {
+    "BG": "background",
+    "MTN": "mountain",
+    "MTN_STROKE": "mountain_stroke",
+    "ROAD": "road",
+    "ROAD_DIM": "road_dim",
+    "WATER": "water",
+    "PADDY": "paddy",
+    "PINE": "forest",
+    "BUILDING": "settlement",
+    "BUILDING_ROOF": "settlement_roof",
+    "INK": "text",
+    "INK_DIM": "text_dim",
+    "INK_FAINT": "text_faint",
+    "MIST_WALL": "mist_wall",
+    "MIST_WALL_STROKE": "mist_wall_stroke",
+    "PASSAGE": "passage",
+    "ZONE": "zone",
+    "OLD_WALL": "old_wall",
+    "PALACE_ROOF": "palace_roof",
+    "PALACE_ROOF_LIGHT": "palace_roof_light",
+    "PALACE_TRIM": "palace_trim",
+    "GRAD_STOPS": "gradient_stops",
+}
+
+_RENDER_LOCK = threading.Lock()
+_stashed: dict[str, object] = {}
+
+
+def _palette_value(palette: object, name: str) -> object:
+    field = _PALETTE_FIELDS[name]
+    if isinstance(palette, dict):
+        val = palette.get(field)
+    else:
+        val = getattr(palette, field, None)
+    return val if val is not None else globals().get(name)
+
+
+def _swap_palette(palette: object) -> None:
+    global _stashed
+    _stashed = {name: globals()[name] for name in _PALETTE_FIELDS}
+    for name in _PALETTE_FIELDS:
+        globals()[name] = _palette_value(palette, name)
+
+
+def _restore_palette() -> None:
+    globals().update(_stashed)
+
+
 
 SERIF = "Georgia, 'Times New Roman', serif"
 
@@ -1064,6 +1120,7 @@ def render_map(
     interactive: bool = False,
     place_overrides: dict[str, tuple[float, float]] | None = None,
     metadata_json: str | None = None,
+    palette: object | None = None,
 ) -> str:
     """Assemble the full SVG document, deterministic for seed+variant.
 
@@ -1073,7 +1130,35 @@ def render_map(
         interactive: wrap key POIs with data-id groups for the editor
         place_overrides: map place id -> (x, y) for movable settlements
         metadata_json: optional FMG world JSON embedded in <metadata>
+        palette: MapConfig Palette (or dict) to color from instead of the
+            canonical hard-coded colors. None keeps canonical colors, so the
+            output stays byte-identical to the sister mapgen.
     """
+    if palette is None:
+        return _render_document(
+            variant, seed=seed, interactive=interactive,
+            place_overrides=place_overrides, metadata_json=metadata_json,
+        )
+    with _RENDER_LOCK:
+        _swap_palette(palette)
+        try:
+            return _render_document(
+                variant, seed=seed, interactive=interactive,
+                place_overrides=place_overrides, metadata_json=metadata_json,
+            )
+        finally:
+            _restore_palette()
+
+
+def _render_document(
+    variant: str = "settled",
+    *,
+    seed: int = 7,
+    interactive: bool = False,
+    place_overrides: dict[str, tuple[float, float]] | None = None,
+    metadata_json: str | None = None,
+) -> str:
+    """Actual render body; colors come from the module globals (possibly swapped)."""
     if variant not in ("minimal", "settled", "textured"):
         raise ValueError(f"unknown variant: {variant!r}")
     ov = place_overrides or {}

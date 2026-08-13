@@ -1,14 +1,17 @@
 """Editor / world-document tests."""
 
 import json
-
-import pytest
+import sys
+from pathlib import Path
 
 from fantasy_map_generator.config import MapConfig, Place
 from fantasy_map_generator.render import render_map
 from fantasy_map_generator.worlds import VALLEY_CONFIG
 
-flask = pytest.importorskip("flask")
+WEB = Path(__file__).resolve().parents[1] / "web"
+sys.path.insert(0, str(WEB))
+
+import bridge  # noqa: E402
 
 
 def test_place_data_id_in_svg():
@@ -58,47 +61,36 @@ def test_from_dict_accepts_legacy_locations():
 
 
 def test_api_render_with_config():
-    from fantasy_map_generator.gui import create_app
-
-    app = create_app()
-    client = app.test_client()
     cfg = MapConfig(
         name="API World",
         places={"x": Place(500, 350, name="Spot", tier="village", id="x")},
     ).to_dict()
-    res = client.post("/api/render", json={"config": cfg, "seed": 3, "selected_id": "x"})
-    assert res.status_code == 200
-    data = res.get_json()
+    data = json.loads(
+        bridge.bridge_render(json.dumps({"config": cfg, "seed": 3, "selected_id": "x"}))
+    )
     assert data["svg"].startswith("<svg")
     assert 'data-id="x"' in data["svg"]
     assert data["config"]["places"]["x"]["name"] == "Spot"
 
 
 def test_api_normalize():
-    from fantasy_map_generator.gui import create_app
-
-    client = create_app().test_client()
-    res = client.post(
-        "/api/world/normalize",
-        json={"config": {"name": "N", "places": {"a": {"x": 10, "y": 20, "name": "A"}}}},
+    data = json.loads(
+        bridge.bridge_normalize(
+            json.dumps({"config": {"name": "N", "places": {"a": {"x": 10, "y": 20, "name": "A"}}}})
+        )
     )
-    assert res.status_code == 200
-    places = res.get_json()["config"]["places"]
+    assert "error" not in data
+    places = data["config"]["places"]
     assert len(places) == 1
 
 
 def test_api_download_json():
-    from fantasy_map_generator.gui import create_app
-
-    client = create_app().test_client()
-    res = client.post(
-        "/api/download",
-        json={"preset": "valley", "seed": 1, "format": "json"},
+    data = json.loads(
+        bridge.bridge_download(json.dumps({"preset": "valley", "seed": 1, "format": "json"}))
     )
-    assert res.status_code == 200
-    assert res.mimetype == "application/json"
-    data = json.loads(res.data)
-    assert "places" in data
+    assert data["mime"] == "application/json"
+    world = json.loads(data["data"])
+    assert "places" in world
 
 
 def test_mutate_place_coords():

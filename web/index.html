@@ -1,269 +1,4 @@
-"""Web GUI: preset gallery + interactive place editor.
-
-Usage:
-    python -m fantasy_map_generator.gui
-    # http://localhost:3000
-"""
-
-from __future__ import annotations
-
-import os
-import random
-
-try:
-    import flask
-except ImportError:
-    flask = None
-
-from fantasy_map_generator.config import LandBody, MapConfig, Place
-from fantasy_map_generator.render import render_map
-from fantasy_map_generator.worlds import WORLDS
-
-
-def create_app():
-    """Create and configure the Flask application."""
-    if flask is None:
-        raise ImportError(
-            "Flask is required for the GUI. Install with: pip install fantasy-map-generator[gui]"
-        )
-
-    app = flask.Flask(__name__, static_folder=None)
-
-    PRESETS: dict[str, tuple[str, MapConfig | None, int | None]] = {
-        world_id: (config.name, config, 42) for world_id, config in WORLDS.items()
-    }
-    PRESETS["random"] = ("Random World", None, None)
-
-    def _parse_knobs(data: dict) -> tuple[int, float | None, float | None]:
-        try:
-            seed = int(data.get("seed", 42))
-        except (ValueError, TypeError):
-            seed = 42
-        return seed, _clamp01(data.get("detail")), _clamp01(data.get("coast_roughness"))
-
-    def _resolve_config(data: dict, seed: int) -> MapConfig:
-        """Prefer explicit config JSON; else preset id."""
-        if data.get("config"):
-            return MapConfig.from_dict(data["config"])
-        preset_id = data.get("preset", "valley")
-        if preset_id not in PRESETS:
-            raise KeyError(preset_id)
-        _name, config_or_none, _seed = PRESETS[preset_id]
-        if config_or_none is None:
-            return _random_world(seed)
-        # deep copy via dict roundtrip so callers can mutate safely
-        return MapConfig.from_dict(config_or_none.to_dict())
-
-    @app.route("/")
-    def index():
-        return flask.render_template_string(HTML_TEMPLATE)
-
-    @app.route("/api/presets")
-    def api_presets():
-        presets = []
-        for preset_id, (name, config, seed) in PRESETS.items():
-            preview_svg = None
-            cfg_dict = None
-            try:
-                cfg = config if config is not None else _random_world(42)
-                cfg = cfg.normalize()
-                preview_svg = render_map(config=cfg, seed=seed or 42)
-                cfg_dict = cfg.to_dict()
-            except Exception:
-                pass
-            presets.append(
-                {
-                    "id": preset_id,
-                    "name": name,
-                    "preview": preview_svg,
-                    "layout": (config.layout if config else "interior"),
-                    "config": cfg_dict,
-                }
-            )
-        return flask.jsonify(presets)
-
-    @app.route("/api/render", methods=["POST"])
-    def api_render():
-        data = flask.request.get_json(silent=True) or {}
-        seed, detail, roughness = _parse_knobs(data)
-        selected_id = data.get("selected_id") or None
-        try:
-            config = _resolve_config(data, seed)
-        except KeyError:
-            return flask.jsonify({"error": f"Unknown preset: {data.get('preset')}"}), 400
-        except Exception as e:
-            return flask.jsonify({"error": f"Invalid config: {e}"}), 400
-
-        try:
-            if detail is not None:
-                config.detail = detail
-            if roughness is not None:
-                config.coast_roughness = roughness
-            svg = render_map(
-                config=config,
-                seed=seed,
-                detail=detail,
-                coast_roughness=roughness,
-                selected_id=selected_id,
-                interactive=True,
-            )
-            return flask.jsonify(
-                {
-                    "svg": svg,
-                    "seed": seed,
-                    "config": config.to_dict(),
-                    "detail": config.detail,
-                    "coast_roughness": config.coast_roughness,
-                }
-            )
-        except Exception as e:
-            return flask.jsonify({"error": str(e)}), 500
-
-    @app.route("/api/download", methods=["POST"])
-    def api_download():
-        data = flask.request.get_json(silent=True) or {}
-        format_ = data.get("format", "svg")
-        seed, detail, roughness = _parse_knobs(data)
-        try:
-            config = _resolve_config(data, seed)
-        except Exception as e:
-            return flask.jsonify({"error": str(e)}), 400
-
-        try:
-            if format_ == "json":
-                import json
-
-                body = json.dumps(config.to_dict(), indent=2)
-                return flask.Response(
-                    body,
-                    mimetype="application/json",
-                    headers={"Content-Disposition": f"attachment; filename=world-{seed}.json"},
-                )
-
-            svg = render_map(config=config, seed=seed, detail=detail, coast_roughness=roughness)
-            if format_ == "svg":
-                # Re-render with embedded world metadata for round-trip
-                svg = render_map(
-                    config=config,
-                    seed=seed,
-                    detail=detail,
-                    coast_roughness=roughness,
-                    embed_world=True,
-                    interactive=True,
-                )
-                return flask.Response(
-                    svg,
-                    mimetype="image/svg+xml",
-                    headers={"Content-Disposition": f"attachment; filename=map-{seed}.svg"},
-                )
-            if format_ == "png":
-                try:
-                    import cairosvg
-
-                    png_bytes = cairosvg.svg2png(bytestring=svg.encode(), scale=2)
-                    return flask.Response(
-                        png_bytes,
-                        mimetype="image/png",
-                        headers={"Content-Disposition": f"attachment; filename=map-{seed}.png"},
-                    )
-                except ImportError:
-                    return flask.jsonify({"error": "cairosvg not installed"}), 501
-            return flask.jsonify({"error": "Unknown format"}), 400
-        except Exception as e:
-            return flask.jsonify({"error": str(e)}), 500
-
-    @app.route("/api/world/normalize", methods=["POST"])
-    def api_normalize():
-        data = flask.request.get_json(silent=True) or {}
-        try:
-            cfg = MapConfig.from_dict(data.get("config") or data)
-            cfg.validate()
-            return flask.jsonify({"config": cfg.to_dict()})
-        except Exception as e:
-            return flask.jsonify({"error": str(e)}), 400
-
-    @app.route("/api/world/from-svg", methods=["POST"])
-    def api_from_svg():
-        """Extract embedded FMG world metadata from an SVG document."""
-        data = flask.request.get_json(silent=True) or {}
-        svg = data.get("svg") or ""
-        if not svg and flask.request.data:
-            svg = flask.request.data.decode("utf-8", errors="replace")
-        from fantasy_map_generator.valley import extract_world_from_svg
-
-        world = extract_world_from_svg(svg)
-        if not world:
-            return flask.jsonify(
-                {"error": "No FMG world metadata found in SVG (export SVG from this app first)"}
-            ), 400
-        try:
-            cfg = MapConfig.from_dict(world.get("config") or world)
-            meta = world.get("meta") or {}
-            return flask.jsonify(
-                {
-                    "config": cfg.to_dict(),
-                    "meta": meta,
-                    "seed": meta.get("seed", 7),
-                }
-            )
-        except Exception as e:
-            return flask.jsonify({"error": str(e)}), 400
-
-    return app
-
-
-def _clamp01(value) -> float | None:
-    if value is None or value == "":
-        return None
-    try:
-        v = float(value)
-    except (TypeError, ValueError):
-        return None
-    return max(0.0, min(1.0, v))
-
-
-def _random_world(seed: int) -> MapConfig:
-    rng = random.Random(seed)
-    places = {
-        "settlement_a": Place(
-            200 + rng.uniform(-50, 50),
-            250 + rng.uniform(-50, 50),
-            name="Settlement A",
-            tier="town",
-            id="settlement_a",
-        ),
-        "settlement_b": Place(
-            700 + rng.uniform(-50, 50),
-            300 + rng.uniform(-50, 50),
-            name="Settlement B",
-            tier="village",
-            id="settlement_b",
-        ),
-        "settlement_c": Place(
-            500 + rng.uniform(-50, 50),
-            550 + rng.uniform(-50, 50),
-            name="Settlement C",
-            tier="hamlet",
-            id="settlement_c",
-        ),
-    }
-    return MapConfig(
-        name="Random World",
-        layout="interior",
-        style_kit="mist_bowl",
-        landmass=[
-            LandBody(
-                center=(500, 350),
-                radii=(380 + rng.uniform(-40, 40), 260 + rng.uniform(-30, 30)),
-                rough=0.12,
-            )
-        ],
-        places=places,
-        detail=0.5,
-    ).normalize()
-
-
-HTML_TEMPLATE = r"""<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
@@ -356,6 +91,13 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     .control-value { text-align: right; font-size: 0.8em; color: #666; }
     .mode-row, .palette { display: flex; flex-wrap: wrap; gap: 6px; }
     .palette button { flex: 1 1 40%; font-size: 0.82em; padding: 7px 6px; }
+    .color-grid { display: flex; flex-direction: column; gap: 5px; }
+    .color-row { display: flex; align-items: center; gap: 8px; }
+    .color-row label { flex: 1; font-size: 0.82em; color: #ccc; }
+    .color-row input[type="color"] {
+      width: 44px; height: 26px; padding: 0; border: 1px solid var(--border);
+      border-radius: 4px; background: none; cursor: pointer;
+    }
     .hint { font-size: 0.82em; color: #666; margin: 8px 0 0; line-height: 1.4; }
     .copy-status { font-size: 0.85em; color: #4caf50; }
     .inspector-empty { color: #888; font-size: 0.9em; margin: 0; }
@@ -423,6 +165,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           </div>
         </fieldset>
         <fieldset>
+          <legend>Colors</legend>
+          <div class="row-btns" style="margin-bottom:8px">
+            <button id="reset-colors" class="link-button">Reset palette</button>
+          </div>
+          <div class="color-grid" id="color-grid"></div>
+          <p class="hint">Colors drive both the standard renderer and the Valley parity kit (which defaults to its canonical palette).</p>
+        </fieldset>
+        <fieldset>
           <legend>Mode</legend>
           <div class="mode-row">
             <button id="mode-select" class="active">Select</button>
@@ -480,9 +230,44 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </div>
     </section>
   </main>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
   <script>
     const TIERS = ["hamlet","village","town","city","capital","ruin","castle"];
     const PATH_KINDS = ["road","trail","river","ferry"];
+    const PALETTE_KEYS = [
+      ["background", "Background"],
+      ["land", "Land"],
+      ["mountain", "Mountain"],
+      ["mountain_stroke", "Mountain stroke"],
+      ["water", "Water"],
+      ["water_tributary", "Tributary"],
+      ["water_deep", "Deep water"],
+      ["paddy", "Paddy"],
+      ["forest", "Forest"],
+      ["desert", "Desert"],
+      ["swamp", "Swamp"],
+      ["ice", "Ice"],
+      ["plain", "Plain"],
+      ["coast", "Coast"],
+      ["settlement", "Settlement"],
+      ["settlement_roof", "Roof"],
+      ["road", "Road"],
+      ["road_dim", "Road (dim)"],
+      ["text", "Text"],
+      ["text_dim", "Text (dim)"],
+      ["text_faint", "Text (faint)"],
+      ["mist_wall", "Mist wall"],
+      ["mist_wall_stroke", "Mist wall stroke"],
+      ["passage", "Passage"],
+      ["zone", "Zone"],
+      ["old_wall", "Old wall"],
+      ["palace_roof", "Palace roof"],
+      ["palace_roof_light", "Palace roof light"],
+      ["palace_trim", "Palace trim"],
+      ["ink", "Ink"],
+      ["paper", "Paper"],
+      ["gold", "Gold"],
+    ];
 
     const statusEl = document.getElementById('status');
     const galleryEl = document.getElementById('gallery');
@@ -571,6 +356,39 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       statusEl.classList.toggle('error', isError);
     }
 
+    const PYODIDE_VERSION = '0.26.4';
+    let bridge = null;
+
+    async function initBridge() {
+      setStatus('Loading the in-browser Python runtime (one-time download, may take a moment)…');
+      const pyodide = await loadPyodide({
+        indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`,
+      });
+      pyodide.FS.mkdirTree('/pkg');
+      pyodide.runPython('import sys; sys.path.insert(0, "/pkg")');
+      const manifest = await (await fetch('src/fantasy_map_generator-files.json')).json();
+      for (const rel of manifest) {
+        const resp = await fetch('src/fantasy_map_generator/' + rel);
+        if (!resp.ok) throw new Error(`Could not load ${rel}`);
+        const text = await resp.text();
+        const path = '/pkg/fantasy_map_generator/' + rel;
+        const dir = path.slice(0, path.lastIndexOf('/'));
+        pyodide.FS.mkdirTree(dir);
+        pyodide.FS.writeFile(path, text);
+      }
+      const bridgeSrc = await (await fetch('bridge.py')).text();
+      pyodide.runPython(bridgeSrc);
+      const g = pyodide.globals;
+      bridge = {
+        presets: () => g.get('bridge_presets')(),
+        render: (payload) => g.get('bridge_render')(payload),
+        download: (payload) => g.get('bridge_download')(payload),
+        normalize: (payload) => g.get('bridge_normalize')(payload),
+        fromSvg: (payload) => g.get('bridge_from_svg')(payload),
+      };
+      setStatus('');
+    }
+
     function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
 
     function pushUndo() {
@@ -618,8 +436,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     }
 
     async function loadPresets() {
-      const res = await fetch('/api/presets');
-      presets = await res.json();
+      const out = JSON.parse(bridge.presets());
+      presets = out;
       galleryEl.innerHTML = '';
       presets.forEach(p => {
         const card = document.createElement('div');
@@ -658,6 +476,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       editorEl.classList.add('visible');
       worldName.textContent = p.name;
       setMode('select');
+      capturePaletteSnapshot();
+      syncColorGrid();
       updateInspector();
       await renderMap();
       try { sessionStorage.setItem('fmg_working', JSON.stringify({ preset: presetId, config: workingConfig, ...knobs() })); } catch (_) {}
@@ -682,6 +502,60 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       }
     }
 
+    const colorInputs = {};
+    let paletteSnapshot = null;
+    let colorDirty = false;
+
+    function buildColorGrid() {
+      const grid = document.getElementById('color-grid');
+      grid.innerHTML = '';
+      for (const [key, label] of PALETTE_KEYS) {
+        const row = document.createElement('div');
+        row.className = 'color-row';
+        const lab = document.createElement('label');
+        lab.textContent = label;
+        lab.htmlFor = 'color-' + key;
+        const inp = document.createElement('input');
+        inp.type = 'color';
+        inp.id = 'color-' + key;
+        inp.value = '#000000';
+        row.appendChild(lab); row.appendChild(inp);
+        grid.appendChild(row);
+        colorInputs[key] = inp;
+        inp.addEventListener('input', () => {
+          if (!workingConfig) return;
+          if (!workingConfig.palette) workingConfig.palette = {};
+          if (!colorDirty) { pushUndo(); colorDirty = true; }
+          workingConfig.palette[key] = inp.value;
+          debounceRender();
+        });
+        inp.addEventListener('change', () => { colorDirty = false; });
+      }
+    }
+
+    function syncColorGrid() {
+      const pal = (workingConfig && workingConfig.palette) || {};
+      for (const [key] of PALETTE_KEYS) {
+        const v = pal[key];
+        if (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) {
+          colorInputs[key].value = v;
+        }
+      }
+    }
+
+    function capturePaletteSnapshot() {
+      paletteSnapshot = workingConfig && workingConfig.palette
+        ? deepClone(workingConfig.palette) : null;
+    }
+
+    function resetColors() {
+      if (!workingConfig || !paletteSnapshot) return;
+      pushUndo();
+      workingConfig.palette = deepClone(paletteSnapshot);
+      syncColorGrid();
+      renderMap();
+    }
+
     async function renderMap() {
       if (!workingConfig) return;
       const seq = ++renderSeq;
@@ -691,20 +565,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         ...knobs(),
       };
       try {
-        const res = await fetch('/api/render', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
+        const out = JSON.parse(bridge.render(JSON.stringify(body)));
         if (seq !== renderSeq) return;
-        if (!res.ok) {
-          const err = await res.json();
-          setStatus(err.error || 'Render failed', true);
+        if (out.error) {
+          setStatus(out.error, true);
           return;
         }
-        const data = await res.json();
-        previewEl.innerHTML = data.svg;
-        if (data.config) workingConfig = data.config;
+        previewEl.innerHTML = out.svg;
+        if (out.config) workingConfig = out.config;
         setStatus('');
         bindSvgEvents();
         drawDraftOverlay();
@@ -1032,22 +900,48 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     });
 
     async function download(format) {
-      const res = await fetch('/api/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config: workingConfig, format, ...knobs() }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        setStatus(err.error || 'Download failed', true);
+      if (format === 'png') { downloadPng(); return; }
+      const out = JSON.parse(bridge.download(JSON.stringify({ config: workingConfig, format, ...knobs() })));
+      if (out.error) {
+        setStatus(out.error, true);
         return;
       }
-      const blob = await res.blob();
+      const blob = new Blob([out.data], { type: out.mime });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = format === 'json' ? `world-${knobs().seed}.json` : `map-${knobs().seed}.${format}`;
+      a.download = out.filename;
       a.click();
       URL.revokeObjectURL(a.href);
+    }
+    async function downloadPng() {
+      const svg = previewEl.querySelector('svg');
+      if (!svg) return;
+      const svgUrl = URL.createObjectURL(new Blob(
+        [new XMLSerializer().serializeToString(svg)],
+        { type: 'image/svg+xml;charset=utf-8' }
+      ));
+      try {
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = svgUrl;
+        });
+        const box = svg.viewBox.baseVal;
+        const scale = 2;
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(box.width * scale);
+        canvas.height = Math.round(box.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = `map-${knobs().seed}.png`;
+        a.click();
+      } catch (e) {
+        setStatus(e.message, true);
+      } finally {
+        URL.revokeObjectURL(svgUrl);
+      }
     }
     document.getElementById('download-svg').addEventListener('click', () => download('svg'));
     document.getElementById('download-png').addEventListener('click', () => download('png'));
@@ -1064,18 +958,15 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           seedSlider.value = data.meta.seed;
           seedValue.textContent = seedSlider.value;
         }
-        const res = await fetch('/api/world/normalize', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const out = await res.json();
-        if (!res.ok) throw new Error(out.error || 'Invalid world');
+        const out = JSON.parse(bridge.normalize(JSON.stringify(payload)));
+        if (out.error) throw new Error(out.error || 'Invalid world');
         pushUndo();
         workingConfig = out.config;
         currentPreset = 'custom';
         worldName.textContent = workingConfig.name || 'Custom world';
         selectedId = null; selectedKind = null;
+        capturePaletteSnapshot();
+        syncColorGrid();
         updateInspector();
         await renderMap();
         setStatus('Loaded world JSON');
@@ -1090,13 +981,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (!file) return;
       try {
         const text = await file.text();
-        const res = await fetch('/api/world/from-svg', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ svg: text }),
-        });
-        const out = await res.json();
-        if (!res.ok) throw new Error(out.error || 'Invalid SVG world');
+        const out = JSON.parse(bridge.fromSvg(JSON.stringify({ svg: text })));
+        if (out.error) throw new Error(out.error || 'Invalid SVG world');
         pushUndo();
         workingConfig = out.config;
         if (out.seed != null) {
@@ -1106,6 +992,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         currentPreset = 'custom';
         worldName.textContent = (workingConfig && workingConfig.name) || 'Custom world';
         selectedId = null; selectedKind = null;
+        capturePaletteSnapshot();
+        syncColorGrid();
         updateInspector();
         await renderMap();
         setStatus('Loaded world from SVG metadata');
@@ -1131,6 +1019,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       currentPreset = null;
     });
 
+    document.getElementById('reset-colors').addEventListener('click', resetColors);
+    buildColorGrid();
+
     const params = new URLSearchParams(location.search);
     if (params.has('seed')) {
       seedSlider.value = params.get('seed');
@@ -1145,7 +1036,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       if (!Number.isNaN(r)) { roughSlider.value = r; roughValue.textContent = (r/100).toFixed(2); }
     }
 
-    loadPresets().then(() => {
+    (async function boot() {
+      try {
+        await initBridge();
+      } catch (err) {
+        setStatus('Could not start the map engine: ' + (err && err.message ? err.message : err), true);
+        return;
+      }
+      await loadPresets();
       if (params.has('preset')) {
         selectPreset(params.get('preset'));
         return;
@@ -1156,20 +1054,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
           // optional restore — only if user wants; skip auto for now
         }
       } catch (_) {}
-    });
+    })();
   </script>
 </body>
 </html>
-"""
-
-
-def main() -> None:
-    app = create_app()
-    host = os.environ.get("FMG_HOST", "127.0.0.1")
-    port = int(os.environ.get("FMG_PORT", "3000"))
-    debug = os.environ.get("FMG_DEBUG", "").lower() in {"1", "true", "yes"}
-    app.run(host=host, port=port, debug=debug)
-
-
-if __name__ == "__main__":
-    main()

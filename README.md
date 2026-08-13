@@ -38,34 +38,45 @@ svg = render_map(config=VALLEY_CONFIG, seed=42)
 print(svg[:100])
 ```
 
-### Launch the Interactive GUI
+### Launch the Interactive Web Tool
 
-**Option 1: Using the control script (recommended)**
+The GUI is a static web app: it runs the real Python in your browser via
+[Pyodide](https://pyodide.org/), with no server needed. The same
+`out/web-stage/` layout is what GitHub Pages deploys, so local and deployed
+behaviour can't drift.
+
 ```bash
-./gui.sh start
-# Opens http://localhost:3000
+./web-stage.sh --serve   # assembles out/web-stage/, serves http://localhost:8000
 ```
 
-**Option 2: Direct Python**
-```bash
-python -m fantasy_map_generator.gui
-```
-
-**Manage the server:**
-```bash
-./gui.sh status    # Check if server is running
-./gui.sh stop      # Stop the server
-./gui.sh restart   # Restart the server
-./gui.sh logs      # Follow server logs
-```
-
-Optional env vars: `FMG_HOST` (default `127.0.0.1`), `FMG_PORT` (default `3000`), `FMG_DEBUG=1`.
+First load downloads the Pyodide runtime (~10 MB, cached by the browser after
+that).
 
 The GUI features:
 - **Map gallery:** Presets (Valley, Desert, Tropical, Arctic, Autumn, Random)
 - **Seed slider:** Explore variations (0–10000), debounced live preview
-- **Export:** Download SVG or PNG (if cairosvg installed)
+- **Export:** Download SVG, JSON, or PNG (rasterized in the browser off a canvas)
 - **Shareable URLs:** `?preset=valley&seed=42`
+
+### Web Tool (GitHub Pages)
+
+The interactive GUI is also published as a static site, at
+`https://rhedak.github.io/fantasy-map-generator/`. GitHub Pages serves only
+static files, so the visitor's own browser runs the real Python (the same
+package, byte for byte) via [Pyodide](https://pyodide.org/), and SVG/JSON
+export happens entirely in the tab. PNG export rasterizes in the browser off a
+`<canvas>` (cairosvg is server-only and not needed).
+
+To deploy from `main` (push automatically triggers
+`.github/workflows/pages.yml`), set this **once** in the repo's web UI:
+
+> Settings → Pages → Build and deployment → Source = **GitHub Actions**
+
+Local preview of the exact deployed layout:
+
+```bash
+./web-stage.sh --serve   # assembles out/web-stage/, serves http://localhost:8000
+```
 
 ## Features
 
@@ -83,7 +94,7 @@ The GUI features:
 - `render.py` — SVG primitives and terrain generators
 - `config.py` — `MapConfig` and `Palette` dataclasses
 - `cli.py` — command-line interface (`--world`, `--seed`, `--out`)
-- `gui.py` — Flask web app
+- `web/` — static interactive web tool (browser runs the package via Pyodide)
 - `worlds/` — preset world definitions + `WORLDS` registry
 
 **World presets (distinct archetypes):**
@@ -178,7 +189,7 @@ ruff check src tests
 
 **Optional:**
 - `cairosvg` (PNG export)
-- `flask` (GUI)
+- *(none for the web tool — it runs in the browser via Pyodide)*
 
 **Development:** `pytest`, `ruff`, `pdoc`
 

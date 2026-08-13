@@ -213,11 +213,13 @@ SVG string written to map.svg
 ### User → GUI
 
 ```
-User opens: http://localhost:5000
+User opens: https://rhedak.github.io/fantasy-map-generator/
+            (or: out/web-stage/ served locally, e.g. `python3 -m http.server`)
 
 ↓
 
-Browser loads HTML + JS controls
+Browser loads HTML + JS, then Pyodide (in-browser CPython) fetches the
+package files and bridge.py
 
 ↓
 
@@ -225,15 +227,11 @@ User adjusts sliders (seed, terrain density, etc.)
 
 ↓
 
-JavaScript POST /api/map with params
+JavaScript calls bridge.render(...) — the same Python package, run by Pyodide
 
 ↓
 
-gui.py creates MapRenderer, returns SVG
-
-↓
-
-JavaScript renders SVG in browser canvas
+Python renders the SVG in the visitor's browser; no server round-trip
 ```
 
 ---
@@ -390,7 +388,6 @@ def test_valley_output_unchanged():
 
 **Optional:**
 - `cairosvg` (PNG export; fails gracefully if missing)
-- `flask` (GUI; fails gracefully if missing)
 
 **Development:**
 - `pytest` (testing)

@@ -85,28 +85,44 @@ DEFAULT_ROUTES: dict[str, Route] = {
 def _valley_palette():
     from fantasy_map_generator.config import Palette
 
+    # Canonical sister-mapgen colors; must match mapgen.py constants exactly so
+    # the default render stays byte-identical to the golden baseline.
     return Palette(
-        background="#202634",
+        background="#202634",        # BG: outside the valley: highlands at night
         land="#2a3344",
-        mountain="#343e54",
-        mountain_stroke="#1c2333",
-        water="#6f9ec4",
+        mountain="#343e54",          # MTN: the ring that walls the bowl in
+        mountain_stroke="#1c2333",   # MTN_STROKE
+        water="#6f9ec4",             # WATER
         water_tributary="#5a8fb5",
         water_deep="#3a5470",
-        paddy="#5d7f62",
-        forest="#3d5c46",
+        paddy="#5d7f62",             # PADDY
+        forest="#3d5c46",            # PINE
         plain="#4a5a4a",
-        settlement="#b9a888",
-        settlement_roof="#7a6a4f",
-        road="#d9c9a3",
-        road_dim="#a99670",
-        text="#e8e2d2",
-        text_dim="#b2a992",
-        text_faint="#8f8777",
-        mist_wall="#dfe6ee",
-        gold="#c9b896",
+        settlement="#b9a888",        # BUILDING
+        settlement_roof="#7a6a4f",   # BUILDING_ROOF
+        road="#d9c9a3",              # ROAD
+        road_dim="#a99670",          # ROAD_DIM
+        text="#e8e2d2",              # INK
+        text_dim="#b2a992",          # INK_DIM
+        text_faint="#8f8777",        # INK_FAINT
+        mist_wall="#dfe6ee",         # MIST_WALL
+        mist_wall_stroke="#c3ccd8",  # MIST_WALL_STROKE
+        passage="#aeb9cc",           # PASSAGE
+        zone="#333c4c",              # ZONE
+        old_wall="#8b93a6",          # OLD_WALL
+        palace_roof="#33456e",       # PALACE_ROOF
+        palace_roof_light="#4d6395", # PALACE_ROOF_LIGHT
+        palace_trim="#c7ceda",       # PALACE_TRIM
         ink="#0c1018",
         paper="#2a3344",
+        gold="#c9b896",
+        gradient_stops=[
+            (0.00, "#f3f6fa"),
+            (0.28, "#cdd6e0"),
+            (0.55, "#96a6ba"),
+            (0.80, "#5c6a80"),
+            (1.00, "#3a4254"),
+        ],
     )
 
 
@@ -175,6 +191,7 @@ def render_valley(
         interactive=interactive,
         place_overrides=_place_overrides(cfg),
         metadata_json=metadata,
+        palette=cfg.palette,
     )
 
     # selection highlight ring for places

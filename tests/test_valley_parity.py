@@ -86,15 +86,19 @@ def test_roundtrip_json_dict():
 
 
 def test_api_from_svg(client=None):
-    flask = __import__("pytest").importorskip("flask")
-    from fantasy_map_generator.gui import create_app
+    import json
+    import sys
+    from pathlib import Path
 
-    app = create_app()
-    c = app.test_client()
+    web = Path(__file__).resolve().parents[1] / "web"
+    sys.path.insert(0, str(web))
+    try:
+        import bridge
+    finally:
+        sys.path.remove(str(web))
     svg = render_map(config=VALLEY_CONFIG, seed=7, embed_world=True, interactive=True)
-    res = c.post("/api/world/from-svg", json={"svg": svg})
-    assert res.status_code == 200
-    body = res.get_json()
+    body = json.loads(bridge.bridge_from_svg(json.dumps({"svg": svg})))
+    assert "error" not in body
     assert body["config"]["style_kit"] == "valley_parity"
     assert "kiriguchi" in body["config"]["places"]
 
@@ -121,3 +125,15 @@ def test_extra_editor_place_composites():
     svg = render_valley(cfg, seed=7, interactive=True)
     assert 'data-id="camp_1"' in svg
     assert "Scout Camp" in svg or "Scout" in svg
+
+
+def test_valley_palette_override_changes_colors():
+    cfg = default_valley_config()
+    svg_default = render_valley(cfg, seed=7, interactive=False)
+    cfg.palette.background = "#ff00aa"
+    cfg.palette.mist_wall = "#00ff88"
+    svg = render_valley(cfg, seed=7, interactive=False)
+    assert "#ff00aa" in svg
+    assert "#00ff88" in svg
+    assert "#202634" not in svg
+    assert svg_default == BASELINE.read_text(encoding="utf-8")
