@@ -192,8 +192,44 @@
           <p class="hint">Click waypoints; double-click or Enter to finish (need 2+ points). Esc cancels.</p>
         </fieldset>
         <fieldset>
+          <legend>Mountains</legend>
+          <div class="control-group">
+            <label for="mountain-kind">Type</label>
+            <select id="mountain-kind">
+              <option value="single">Single (click to place)</option>
+              <option value="ridge">Ridge (waypoints)</option>
+              <option value="ring">Ring (circle)</option>
+              <option value="stacked">Stacked (circle)</option>
+            </select>
+          </div>
+          <button id="mode-mountain">Draw Mountain</button>
+          <p class="hint" id="mountain-hint">Choose a type, then draw on the map.</p>
+        </fieldset>
+        <fieldset>
           <legend>Properties</legend>
           <div id="inspector-empty" class="inspector-empty">Nothing selected</div>
+          <div id="inspector-title" style="display:none">
+            <div class="control-group">
+              <label for="prop-title">Map Title</label>
+              <input id="prop-title" type="text">
+            </div>
+            <div class="control-group">
+              <label for="prop-title-size">Font Size</label>
+              <input id="prop-title-size" type="range" min="12" max="72" step="1">
+              <span id="prop-title-size-value">26</span>px
+            </div>
+            <div class="control-group" style="display:flex; gap:12px">
+              <label style="flex:1">
+                <input id="prop-title-bold" type="checkbox">
+                Bold
+              </label>
+              <label style="flex:1">
+                <input id="prop-title-italic" type="checkbox">
+                Italic
+              </label>
+            </div>
+            <p class="hint">Click on the map title to edit it.</p>
+          </div>
           <div id="inspector-place" style="display:none">
             <div class="control-group">
               <label for="prop-name">Name</label>
@@ -224,6 +260,36 @@
             <p class="hint" id="route-points-hint">0 points</p>
             <div class="row-btns" style="margin-top:8px">
               <button id="delete-route" class="danger">Delete path</button>
+            </div>
+          </div>
+          <div id="inspector-mountain" style="display:none">
+            <div class="control-group">
+              <label for="prop-mountain-kind">Type</label>
+              <select id="prop-mountain-kind">
+                <option value="single">Single</option>
+                <option value="ridge">Ridge</option>
+                <option value="ring">Ring</option>
+                <option value="stacked">Stacked</option>
+              </select>
+            </div>
+            <div class="control-group" id="prop-mountain-size-group">
+              <label for="prop-mountain-size">Size</label>
+              <input id="prop-mountain-size" type="range" min="10" max="200" step="5">
+              <span class="control-value" id="mountain-size-val">50</span>
+            </div>
+            <div class="control-group" id="prop-mountain-rotation-group">
+              <label for="prop-mountain-rotation">Rotation</label>
+              <input id="prop-mountain-rotation" type="range" min="0" max="360" step="5">
+              <span class="control-value" id="mountain-rotation-val">0°</span>
+            </div>
+            <div class="control-group">
+              <label for="prop-mountain-density">Density</label>
+              <input id="prop-mountain-density" type="range" min="0" max="1" step="0.05">
+              <span class="control-value" id="mountain-density-val">0.5</span>
+            </div>
+            <p class="hint" id="mountain-points-hint">—</p>
+            <div class="row-btns" style="margin-top:8px">
+              <button id="delete-mountain" class="danger">Delete mountain</button>
             </div>
           </div>
         </fieldset>
@@ -290,10 +356,27 @@
     const propTier = document.getElementById('prop-tier');
     const propRouteLabel = document.getElementById('prop-route-label');
     const propRouteKind = document.getElementById('prop-route-kind');
+    const propMountainKind = document.getElementById('prop-mountain-kind');
+    const propMountainDensity = document.getElementById('prop-mountain-density');
+    const propMountainSize = document.getElementById('prop-mountain-size');
+    const propMountainRotation = document.getElementById('prop-mountain-rotation');
+    const mountainDensityVal = document.getElementById('mountain-density-val');
+    const mountainSizeVal = document.getElementById('mountain-size-val');
+    const mountainRotationVal = document.getElementById('mountain-rotation-val');
+    const mountainSizeGroup = document.getElementById('prop-mountain-size-group');
+    const mountainRotationGroup = document.getElementById('prop-mountain-rotation-group');
     const routePointsHint = document.getElementById('route-points-hint');
+    const mountainPointsHint = document.getElementById('mountain-points-hint');
     const inspectorEmpty = document.getElementById('inspector-empty');
+    const inspectorTitle = document.getElementById('inspector-title');
     const inspectorPlace = document.getElementById('inspector-place');
     const inspectorRoute = document.getElementById('inspector-route');
+    const inspectorMountain = document.getElementById('inspector-mountain');
+    const propTitle = document.getElementById('prop-title');
+    const propTitleSize = document.getElementById('prop-title-size');
+    const propTitleSizeValue = document.getElementById('prop-title-size-value');
+    const propTitleBold = document.getElementById('prop-title-bold');
+    const propTitleItalic = document.getElementById('prop-title-italic');
     const undoBtn = document.getElementById('undo-btn');
     const redoBtn = document.getElementById('redo-btn');
 
@@ -301,10 +384,11 @@
     let currentPreset = null;
     let workingConfig = null;
     let selectedId = null;
-    let selectedKind = null; // place | route
-    let mode = 'select'; // select | place | path
+    let selectedKind = null; // place | route | mountain
+    let mode = 'select'; // select | place | path | mountain
     let placeTier = 'village';
     let pathKind = 'road';
+    let mountainKind = 'ridge';
     let draftPoints = [];
     let lastClickTime = 0;
     let renderTimer = null;
@@ -314,6 +398,7 @@
     let dragging = null;
     let placeCounters = {};
     let pathCounters = {};
+    let mountainCounters = {};
 
     TIERS.forEach(t => {
       const o = document.createElement('option');
@@ -385,6 +470,9 @@
         download: (payload) => g.get('bridge_download')(payload),
         normalize: (payload) => g.get('bridge_normalize')(payload),
         fromSvg: (payload) => g.get('bridge_from_svg')(payload),
+        addMountain: (payload) => g.get('add_mountain')(payload),
+        updateMountain: (payload) => g.get('update_mountain')(payload),
+        deleteMountain: (payload) => g.get('delete_mountain')(payload),
       };
       setStatus('');
     }
@@ -409,16 +497,22 @@
       document.getElementById('mode-select').classList.toggle('active', m === 'select');
       document.getElementById('mode-place').classList.toggle('active', m === 'place');
       document.getElementById('mode-path').classList.toggle('active', m === 'path');
+      document.getElementById('mode-mountain').classList.toggle('active', m === 'mountain');
       previewWrap.classList.toggle('select-mode', m === 'select');
-      previewWrap.classList.toggle('place-mode', m === 'place' || m === 'path');
+      previewWrap.classList.toggle('place-mode', m === 'place' || m === 'path' || m === 'mountain');
       if (m === 'select') {
         draftPoints = [];
-        modeHint.textContent = 'Click a settlement or path to select. Drag places to move.';
+        modeHint.textContent = 'Click a settlement, path, or mountain to select. Drag places to move.';
         [...paletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
         [...pathPaletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
         drawDraftOverlay();
       } else if (m === 'path') {
         modeHint.textContent = `Draw ${pathKind}: click waypoints, double-click or Enter to finish.`;
+      } else if (m === 'mountain') {
+        const hint = mountainKind === 'single'
+          ? `Place ${mountainKind} mountain: click to place. Esc to cancel.`
+          : `Draw ${mountainKind} mountain: click waypoints, double-click or Enter to finish.`;
+        modeHint.textContent = hint;
       }
     }
 
@@ -484,13 +578,25 @@
     }
 
     function updateInspector() {
+      const title = selectedKind === 'title' && selectedId === 'map_title' && workingConfig ? workingConfig : null;
       const place = selectedKind === 'place' && selectedId && workingConfig && workingConfig.places
         ? workingConfig.places[selectedId] : null;
       const route = selectedKind === 'route' && selectedId && workingConfig && workingConfig.routes
         ? workingConfig.routes[selectedId] : null;
-      inspectorEmpty.style.display = (!place && !route) ? 'block' : 'none';
+      const mountain = selectedKind === 'mountain' && selectedId && workingConfig && workingConfig.mountain_ranges
+        ? workingConfig.mountain_ranges[selectedId] : null;
+      inspectorEmpty.style.display = (!title && !place && !route && !mountain) ? 'block' : 'none';
+      inspectorTitle.style.display = title ? 'block' : 'none';
       inspectorPlace.style.display = place ? 'block' : 'none';
       inspectorRoute.style.display = route ? 'block' : 'none';
+      inspectorMountain.style.display = mountain ? 'block' : 'none';
+      if (title) {
+        propTitle.value = workingConfig.name || '';
+        propTitleSize.value = workingConfig.title_font_size || 26;
+        propTitleSizeValue.textContent = propTitleSize.value;
+        propTitleBold.checked = workingConfig.title_bold || false;
+        propTitleItalic.checked = workingConfig.title_italic || false;
+      }
       if (place) {
         propName.value = place.name || '';
         propTier.value = place.tier || 'village';
@@ -499,6 +605,22 @@
         propRouteLabel.value = route.label || selectedId || '';
         propRouteKind.value = route.kind || 'road';
         routePointsHint.textContent = `${(route.points || []).length} waypoints`;
+      }
+      if (mountain) {
+        propMountainKind.value = mountain.kind || 'ridge';
+        propMountainDensity.value = mountain.density || 0.5;
+        propMountainSize.value = mountain.size || 50;
+        propMountainRotation.value = mountain.rotation || 0;
+        mountainDensityVal.textContent = (mountain.density || 0.5).toFixed(2);
+        mountainSizeVal.textContent = (mountain.size || 50).toFixed(0);
+        mountainRotationVal.textContent = (mountain.rotation || 0).toFixed(0) + '°';
+
+        // Show size and rotation controls for all mountain types
+        mountainSizeGroup.style.display = 'block';
+        mountainRotationGroup.style.display = 'block';
+
+        const pointCount = (mountain.points || []).length;
+        mountainPointsHint.textContent = mountain.kind === 'ridge' ? `${pointCount} waypoints` : `— ${mountain.kind}`;
       }
     }
 
@@ -696,6 +818,43 @@
       renderMap();
     }
 
+    function finishMountain() {
+      if (mountainKind === 'ridge' && draftPoints.length < 2) {
+        setStatus('Need at least 2 waypoints for ridge mountain', true);
+        return;
+      }
+      if (mountainKind === 'single' && draftPoints.length < 1) {
+        setStatus('Click to place a single mountain', true);
+        return;
+      }
+      pushUndo();
+      mountainCounters[mountainKind] = (mountainCounters[mountainKind] || 0) + 1;
+      const id = 'mountain_' + Math.random().toString(16).slice(2, 10);
+      if (!workingConfig.mountain_ranges) workingConfig.mountain_ranges = {};
+      const mountain = {
+        kind: mountainKind,
+        density: 0.7,
+        size: 50,
+        rotation: 0,
+        id,
+      };
+      if (mountainKind === 'ridge') {
+        mountain.points = draftPoints.map(p => [p[0], p[1]]);
+      } else if (mountainKind === 'single') {
+        mountain.center = [draftPoints[0][0], draftPoints[0][1]];
+      } else {
+        mountain.center = [workingConfig.canvas_width / 2, workingConfig.canvas_height / 2];
+        mountain.radii = [80, 60];
+      }
+      workingConfig.mountain_ranges[id] = mountain;
+      draftPoints = [];
+      selectedId = id;
+      selectedKind = 'mountain';
+      setMode('select');
+      updateInspector();
+      renderMap();
+    }
+
     previewWrap.addEventListener('pointerdown', (evt) => {
       if (!workingConfig) return;
       const pt = svgPoint(evt);
@@ -724,6 +883,24 @@
         return;
       }
 
+      if (mode === 'mountain') {
+        const c = clampToCanvas(pt.x, pt.y);
+        if (isDouble && draftPoints.length >= 1) {
+          // double-click finishes
+          if (mountainKind === 'ridge' && draftPoints.length >= 2) finishMountain();
+          return;
+        }
+        draftPoints.push([c.x, c.y]);
+        drawDraftOverlay();
+        if (mountainKind === 'single') {
+          // Single mountains finish immediately
+          finishMountain();
+          return;
+        }
+        modeHint.textContent = `Draw ${mountainKind}: ${draftPoints.length} point(s). Double-click or Enter to finish.`;
+        return;
+      }
+
       // select mode
       if (feat && feat.kind === 'place' && workingConfig.places[feat.id]) {
         selectedId = feat.id;
@@ -747,7 +924,59 @@
       } else if (feat && feat.kind === 'route' && workingConfig.routes[feat.id]) {
         selectedId = feat.id;
         selectedKind = 'route';
-        dragging = null;
+        const route = workingConfig.routes[feat.id];
+        dragging = {
+          id: feat.id,
+          kind: 'route',
+          pointerId: evt.pointerId,
+          origX: route.points?.[0]?.[0] ?? 0,
+          origY: route.points?.[0]?.[1] ?? 0,
+          moved: false,
+        };
+        previewWrap.setPointerCapture(evt.pointerId);
+        ghost.style.display = 'block';
+        const rect = previewWrap.getBoundingClientRect();
+        ghost.style.left = (evt.clientX - rect.left) + 'px';
+        ghost.style.top = (evt.clientY - rect.top) + 'px';
+        updateInspector();
+        renderMap();
+      } else if (feat && feat.kind === 'mountain' && workingConfig.mountain_ranges[feat.id]) {
+        selectedId = feat.id;
+        selectedKind = 'mountain';
+        const mr = workingConfig.mountain_ranges[feat.id];
+        const origX = mr.kind === 'ridge' ? mr.points?.[0]?.[0] ?? 0 : mr.center?.[0] ?? 0;
+        const origY = mr.kind === 'ridge' ? mr.points?.[0]?.[1] ?? 0 : mr.center?.[1] ?? 0;
+        dragging = {
+          id: feat.id,
+          kind: 'mountain',
+          pointerId: evt.pointerId,
+          origX: origX,
+          origY: origY,
+          moved: false,
+        };
+        previewWrap.setPointerCapture(evt.pointerId);
+        ghost.style.display = 'block';
+        const rect = previewWrap.getBoundingClientRect();
+        ghost.style.left = (evt.clientX - rect.left) + 'px';
+        ghost.style.top = (evt.clientY - rect.top) + 'px';
+        updateInspector();
+        renderMap();
+      } else if (feat && feat.kind === 'title') {
+        selectedId = 'map_title';
+        selectedKind = 'title';
+        dragging = {
+          id: 'map_title',
+          kind: 'title',
+          pointerId: evt.pointerId,
+          origX: workingConfig.title_x || (workingConfig.canvas_width / 2),
+          origY: workingConfig.title_y || 30,
+          moved: false,
+        };
+        previewWrap.setPointerCapture(evt.pointerId);
+        ghost.style.display = 'block';
+        const rect = previewWrap.getBoundingClientRect();
+        ghost.style.left = (evt.clientX - rect.left) + 'px';
+        ghost.style.top = (evt.clientY - rect.top) + 'px';
         updateInspector();
         renderMap();
       } else {
@@ -777,13 +1006,41 @@
       dragging = null;
       ghost.style.display = 'none';
       try { previewWrap.releasePointerCapture(d.pointerId); } catch (_) {}
-      if (!d.moved || d.kind !== 'place') return;
+      if (!d.moved) return;
       const pt = svgPoint(evt);
-      if (!pt || !workingConfig.places[d.id]) return;
+      if (!pt) return;
       const c = clampToCanvas(pt.x, pt.y);
       pushUndo();
-      workingConfig.places[d.id].x = c.x;
-      workingConfig.places[d.id].y = c.y;
+
+      if (d.kind === 'place' && workingConfig.places[d.id]) {
+        workingConfig.places[d.id].x = c.x;
+        workingConfig.places[d.id].y = c.y;
+      } else if (d.kind === 'mountain' && workingConfig.mountain_ranges[d.id]) {
+        const mr = workingConfig.mountain_ranges[d.id];
+        if (mr.kind === 'ridge') {
+          // Move all waypoints by the same offset
+          const dx = c.x - d.origX;
+          const dy = c.y - d.origY;
+          if (mr.points) {
+            mr.points = mr.points.map(p => [p[0] + dx, p[1] + dy]);
+          }
+        } else {
+          // For single/ring/stacked, just move the center
+          mr.center = [c.x, c.y];
+        }
+      } else if (d.kind === 'route' && workingConfig.routes[d.id]) {
+        // Move all waypoints by the same offset
+        const dx = c.x - d.origX;
+        const dy = c.y - d.origY;
+        if (workingConfig.routes[d.id].points) {
+          workingConfig.routes[d.id].points = workingConfig.routes[d.id].points.map(p => [p[0] + dx, p[1] + dy]);
+        }
+      } else if (d.kind === 'title') {
+        // Move the title
+        workingConfig.title_x = c.x;
+        workingConfig.title_y = c.y;
+      }
+
       renderMap();
     }
 
@@ -805,6 +1062,18 @@
       [...paletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
     });
 
+    document.getElementById('mode-mountain').addEventListener('click', () => {
+      mountainKind = document.getElementById('mountain-kind').value;
+      draftPoints = [];
+      setMode('mountain');
+      [...paletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
+      [...pathPaletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
+    });
+
+    document.getElementById('mountain-kind').addEventListener('change', (e) => {
+      mountainKind = e.target.value;
+    });
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         draftPoints = [];
@@ -814,7 +1083,11 @@
         e.preventDefault();
         finishPath();
       }
-      const typing = document.activeElement === propName || document.activeElement === propRouteLabel;
+      if (e.key === 'Enter' && mode === 'mountain') {
+        e.preventDefault();
+        finishMountain();
+      }
+      const typing = document.activeElement === propName || document.activeElement === propRouteLabel || document.activeElement === propTitle;
       if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !typing) {
         e.preventDefault();
         deleteSelected();
@@ -832,6 +1105,8 @@
         delete workingConfig.places[selectedId];
       } else if (selectedKind === 'route' && workingConfig.routes[selectedId]) {
         delete workingConfig.routes[selectedId];
+      } else if (selectedKind === 'mountain' && workingConfig.mountain_ranges[selectedId]) {
+        delete workingConfig.mountain_ranges[selectedId];
       }
       selectedId = null;
       selectedKind = null;
@@ -841,6 +1116,7 @@
 
     document.getElementById('delete-feature').addEventListener('click', deleteSelected);
     document.getElementById('delete-route').addEventListener('click', deleteSelected);
+    document.getElementById('delete-mountain').addEventListener('click', deleteSelected);
 
     let propTimer = null;
     function applyPlaceProps() {
@@ -869,6 +1145,55 @@
       if (propTimer) clearTimeout(propTimer);
       propTimer = setTimeout(applyRouteProps, 400);
     });
+
+    function applyMountainProps() {
+      if (selectedKind !== 'mountain' || !selectedId || !workingConfig.mountain_ranges[selectedId]) return;
+      pushUndo();
+      const mr = workingConfig.mountain_ranges[selectedId];
+      mr.kind = propMountainKind.value || 'ridge';
+      mr.density = parseFloat(propMountainDensity.value) || 0.5;
+      mr.size = parseFloat(propMountainSize.value) || 50;
+      mr.rotation = parseFloat(propMountainRotation.value) || 0;
+      renderMap();
+    }
+    propMountainKind.addEventListener('change', applyMountainProps);
+    propMountainDensity.addEventListener('input', (e) => {
+      mountainDensityVal.textContent = parseFloat(e.target.value).toFixed(2);
+      if (propTimer) clearTimeout(propTimer);
+      propTimer = setTimeout(applyMountainProps, 400);
+    });
+    propMountainSize.addEventListener('input', (e) => {
+      mountainSizeVal.textContent = parseFloat(e.target.value).toFixed(0);
+      if (propTimer) clearTimeout(propTimer);
+      propTimer = setTimeout(applyMountainProps, 400);
+    });
+    propMountainRotation.addEventListener('input', (e) => {
+      mountainRotationVal.textContent = parseFloat(e.target.value).toFixed(0) + '°';
+      if (propTimer) clearTimeout(propTimer);
+      propTimer = setTimeout(applyMountainProps, 400);
+    });
+
+    function applyTitleProps() {
+      if (selectedKind !== 'title' || !workingConfig) return;
+      pushUndo();
+      workingConfig.name = propTitle.value || 'Untitled Fantasy World';
+      workingConfig.title_font_size = parseFloat(propTitleSize.value) || 26;
+      workingConfig.title_bold = propTitleBold.checked;
+      workingConfig.title_italic = propTitleItalic.checked;
+      renderMap();
+    }
+    propTitle.addEventListener('change', applyTitleProps);
+    propTitle.addEventListener('input', () => {
+      if (propTimer) clearTimeout(propTimer);
+      propTimer = setTimeout(applyTitleProps, 400);
+    });
+    propTitleSize.addEventListener('input', (e) => {
+      propTitleSizeValue.textContent = parseFloat(e.target.value).toFixed(0);
+      if (propTimer) clearTimeout(propTimer);
+      propTimer = setTimeout(applyTitleProps, 400);
+    });
+    propTitleBold.addEventListener('change', applyTitleProps);
+    propTitleItalic.addEventListener('change', applyTitleProps);
 
     function undo() {
       if (!undoStack.length) return;

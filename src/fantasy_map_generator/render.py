@@ -272,22 +272,28 @@ def _mountains_ring(
     mouth_end_deg: float = 0.0,
     num_peaks: int = 54,
     density: float = 1.0,
+    size: float = 50.0,
+    rotation: float = 0.0,
 ) -> list[str]:
     out: list[str] = []
     cx, cy = center
     rx, ry = radii
+    size_scale = size / 50.0  # normalize to default size of 50
+    rx_scaled = rx * size_scale
+    ry_scaled = ry * size_scale
     n = max(8, int(num_peaks * density))
+    rot_rad = math.radians(rotation)
     for i in range(n):
-        a_deg = 360.0 * i / n
+        a_deg = 360.0 * i / n + rotation
         if mouth_start_deg <= a_deg <= mouth_end_deg:
             continue
         a = math.radians(a_deg)
-        bx = cx + (rx + 8 + rng.uniform(-3, 3)) * math.cos(a)
-        by = cy + (ry + 8 + rng.uniform(-3, 3)) * math.sin(a)
+        bx = cx + (rx_scaled + 8 + rng.uniform(-3, 3)) * math.cos(a)
+        by = cy + (ry_scaled + 8 + rng.uniform(-3, 3)) * math.sin(a)
         tx, ty = -math.sin(a), math.cos(a)
-        w = 16 + rng.uniform(-3, 5)
-        apex_x = cx + (rx + 42 + rng.uniform(-6, 14)) * math.cos(a) + tx * rng.uniform(-6, 6)
-        apex_y = cy + (ry + 42 + rng.uniform(-6, 14)) * math.sin(a) + ty * rng.uniform(-6, 6)
+        w = (16 + rng.uniform(-3, 5)) * size_scale
+        apex_x = cx + (rx_scaled + 42 + rng.uniform(-6, 14)) * math.cos(a) + tx * rng.uniform(-6, 6)
+        apex_y = cy + (ry_scaled + 42 + rng.uniform(-6, 14)) * math.sin(a) + ty * rng.uniform(-6, 6)
         p1 = (bx + tx * w, by + ty * w)
         p2 = (bx - tx * w, by - ty * w)
         out.append(
@@ -303,6 +309,7 @@ def _mountains_ridge(
     mountain_stroke: str,
     density: float = 1.0,
     style: str = "jagged",
+    size: float = 50.0,
 ) -> list[str]:
     if len(points) < 2:
         return []
@@ -328,8 +335,9 @@ def _mountains_ridge(
             dy = by - samples[i - 1][1]
         ln = math.hypot(dx, dy) or 1.0
         tx, ty = -dy / ln, dx / ln
-        w = 10 + rng.uniform(-2, 6)
-        h = 22 + rng.uniform(-4, 12)
+        size_scale = size / 50.0  # normalize to default size of 50
+        w = (10 + rng.uniform(-2, 6)) * size_scale
+        h = (22 + rng.uniform(-4, 12)) * size_scale
         if style == "symbol":
             # simple grey triangle stamp
             apex = (bx + tx * rng.uniform(-2, 2), by - h)
@@ -375,13 +383,16 @@ def _mountains_stacked(
     mountain_stroke: str,
     levels: int = 3,
     density: float = 0.8,
+    size: float = 50.0,
+    rotation: float = 0.0,
 ) -> list[str]:
     out: list[str] = []
     cx, cy = center
+    size_scale = size / 50.0  # normalize to default size of 50
     for level in range(levels):
         t = (level + 1) / levels
-        rx = radii[0] * (0.35 + 0.55 * t)
-        ry = radii[1] * (0.3 + 0.5 * t)
+        rx = radii[0] * (0.35 + 0.55 * t) * size_scale
+        ry = radii[1] * (0.3 + 0.5 * t) * size_scale
         n = max(5, int(12 * density * (level + 1)))
         for _i in range(n):
             a = rng.uniform(0, math.tau)
@@ -400,6 +411,50 @@ def _mountains_stacked(
                 )
             )
     return out
+
+
+def _mountains_single(
+    center: tuple[float, float],
+    size: float,
+    rotation: float,
+    mountain_color: str,
+    mountain_stroke: str,
+) -> list[str]:
+    """Render a single mountain peak with rotation."""
+    cx, cy = center
+    rot_rad = math.radians(rotation)
+    cos_r = math.cos(rot_rad)
+    sin_r = math.sin(rot_rad)
+
+    # Create a single mountain peak (triangle)
+    # Base points
+    base_width = size * 1.2
+    peak_height = size * 1.5
+
+    # Triangle points before rotation: apex at (cx, cy - peak_height), base at cy
+    apex = (0, -peak_height)
+    left = (-base_width / 2, peak_height / 2)
+    right = (base_width / 2, peak_height / 2)
+
+    # Rotate and translate
+    def rotate_point(p: tuple[float, float]) -> tuple[float, float]:
+        x, y = p
+        rx = x * cos_r - y * sin_r
+        ry = x * sin_r + y * cos_r
+        return (cx + rx, cy + ry)
+
+    p_apex = rotate_point(apex)
+    p_left = rotate_point(left)
+    p_right = rotate_point(right)
+
+    return [
+        _polygon(
+            [p_left, p_apex, p_right],
+            fill=mountain_color,
+            stroke=mountain_stroke,
+            sw=1.2,
+        )
+    ]
 
 
 def _river(
@@ -923,10 +978,10 @@ def render_map(
                 )
 
     # Mountains
-    mountain_ranges = list(cfg.mountain_ranges)
+    mountain_ranges = dict(cfg.mountain_ranges)
     if not mountain_ranges and cfg.layout == "bowl":
-        mountain_ranges = [
-            MountainRange(
+        mountain_ranges = {
+            "ring_0": MountainRange(
                 kind="ring",
                 center=(canvas_width / 2, canvas_height / 2),
                 radii=(canvas_width * 0.35, canvas_height * 0.35),
@@ -934,15 +989,16 @@ def render_map(
                 mouth_end_deg=178.0,
                 num_peaks=54,
             )
-        ]
+        }
 
     style = cfg.style_kit
-    for mr in mountain_ranges:
+    for mrid, mr in mountain_ranges.items():
         dens = mr.density * (0.5 + detail_v)
+        elems: list[str] = []
         if mr.kind == "ring":
             center = mr.center or (canvas_width / 2, canvas_height / 2)
             radii = mr.radii or (canvas_width * 0.35, canvas_height * 0.35)
-            layers.extend(
+            elems.extend(
                 _mountains_ring(
                     rng,
                     center,
@@ -953,12 +1009,14 @@ def render_map(
                     mr.mouth_end_deg,
                     mr.num_peaks,
                     dens,
+                    mr.size or 50.0,
+                    mr.rotation or 0.0,
                 )
             )
         elif mr.kind == "stacked":
             center = mr.center or (canvas_width / 2, canvas_height / 2)
             radii = mr.radii or (120.0, 90.0)
-            layers.extend(
+            elems.extend(
                 _mountains_stacked(
                     rng,
                     center,
@@ -967,11 +1025,31 @@ def render_map(
                     palette.mountain_stroke,
                     levels=mr.levels,
                     density=dens,
+                    size=mr.size or 50.0,
+                    rotation=mr.rotation or 0.0,
                 )
             )
+        elif mr.kind == "single":
+            center = mr.center or (canvas_width / 2, canvas_height / 2)
+            size = mr.size or 50.0
+            rotation = mr.rotation or 0.0
+            elems.extend(
+                _mountains_single(
+                    center,
+                    size,
+                    rotation,
+                    palette.mountain,
+                    palette.mountain_stroke,
+                )
+            )
+            if selected_id and selected_id == mrid:
+                # Draw a circle around the selected single mountain
+                elems.append(
+                    _circle(center[0], center[1], size, stroke="#ffcc33", sw=2.0, opacity=0.45)
+                )
         else:  # ridge
             ridge_style = "symbol" if style == "rpg_symbols" else "jagged"
-            layers.extend(
+            elems.extend(
                 _mountains_ridge(
                     rng,
                     mr.points,
@@ -979,8 +1057,14 @@ def render_map(
                     palette.mountain_stroke,
                     density=dens,
                     style=ridge_style,
+                    size=mr.size or 50.0,
                 )
             )
+            if selected_id and selected_id == mrid:
+                elems.append(
+                    _path(mr.points, stroke="#ffcc33", sw=3.0, opacity=0.45)
+                )
+        layers.append(_group(elems, data_id=mrid, data_kind="mountain"))
 
     # Forests
     stands = list(cfg.forest_stands)
@@ -1042,7 +1126,7 @@ def render_map(
     for _pid, place in cfg.places.items():
         jx = rng.uniform(-4, 4) * (1.0 - detail_v * 0.3)
         jy = 18 + rng.uniform(0, 6)
-        size = 13 if place.tier in {"capital", "city", "castle"} else 11
+        size = 20 if place.tier in {"capital", "city", "castle"} else 16
         layers.append(
             _text(
                 place.x + jx,
@@ -1074,16 +1158,28 @@ def render_map(
     if cfg.decor.cartouche:
         layers.extend(_decor_cartouche(canvas_width / 2, 40, cfg.name, palette))
     else:
-        layers.append(
+        title_x = cfg.title_x if cfg.title_x is not None else (canvas_width / 2)
+        title_y = cfg.title_y if cfg.title_y is not None else 30
+        title_elems: list[str] = [
+            # Invisible rect for easier picking
+            _rect(title_x - 150, title_y - 20, 300, 40, fill="#ffffff", opacity=0.001),
             _text(
-                canvas_width // 2,
-                30,
+                title_x,
+                title_y,
                 cfg.name,
-                size=20,
+                size=cfg.title_font_size,
                 anchor="middle",
                 fill=palette.text,
+                italic=cfg.title_italic,
+                weight="bold" if cfg.title_bold else None,
+            ),
+        ]
+        if selected_id and selected_id == "map_title":
+            # Highlight selected title
+            title_elems.append(
+                _rect(title_x - 150, title_y - 20, 300, 40, stroke="#ffcc33", sw=2.0, opacity=0.45)
             )
-        )
+        layers.append(_group(title_elems, data_id="map_title", data_kind="title"))
 
     # Decor
     if cfg.decor.border:

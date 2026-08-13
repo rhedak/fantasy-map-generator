@@ -84,8 +84,8 @@ ARCTIC_CONFIG = MapConfig(
         BiomeRegion("Ice Pack", "ice", (500.0, 160.0), (300.0, 100.0), 0.75),
         BiomeRegion("Tundra Scrub", "tundra", (400.0, 320.0), (150.0, 80.0), 0.45),
     ],
-    mountain_ranges=[
-        MountainRange(
+    mountain_ranges={
+        "arctic_spine": MountainRange(
             kind="ridge",
             points=[
                 (100.0, 120.0),
@@ -98,12 +98,12 @@ ARCTIC_CONFIG = MapConfig(
             ],
             density=1.0,
         ),
-        MountainRange(
+        "fjord_range": MountainRange(
             kind="ridge",
             points=[(280.0, 280.0), (360.0, 250.0), (450.0, 270.0)],
             density=0.55,
         ),
-    ],
+    },
     forest_stands=[
         ForestStand((380.0, 300.0), (50.0, 35.0), "conifer", 0.35, 3),
         ForestStand((700.0, 470.0), (40.0, 25.0), "conifer", 0.3, 2),

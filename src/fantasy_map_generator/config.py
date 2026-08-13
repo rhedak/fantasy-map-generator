@@ -23,7 +23,7 @@ StyleKit = Literal[
 ]
 Biome = Literal["forest", "desert", "swamp", "ice", "plain", "coast", "tundra"]
 TreeStyle = Literal["triangle", "conifer", "canopy", "stamp"]
-MountainKind = Literal["ring", "ridge", "stacked"]
+MountainKind = Literal["ring", "ridge", "stacked", "single"]
 RouteKind = Literal["road", "trail", "river", "ferry"]
 PlaceTier = Literal["hamlet", "village", "town", "city", "capital", "ruin", "castle"]
 
@@ -85,6 +85,8 @@ class MountainRange:
     mouth_start_deg: float = 0.0
     mouth_end_deg: float = 0.0
     num_peaks: int = 54
+    size: float = 50.0
+    rotation: float = 0.0
     id: str = ""
 
 
@@ -198,7 +200,7 @@ class MapConfig:
 
     landmass: list[LandBody] = field(default_factory=list)
     biome_regions: list[BiomeRegion] = field(default_factory=list)
-    mountain_ranges: list[MountainRange] = field(default_factory=list)
+    mountain_ranges: dict[str, MountainRange] = field(default_factory=dict)
     forest_stands: list[ForestStand] = field(default_factory=list)
     places: dict[str, Place] = field(default_factory=dict)
     routes: dict[str, Route] = field(default_factory=dict)
@@ -210,6 +212,11 @@ class MapConfig:
     decor: Decor = field(default_factory=Decor)
     detail: float = 0.55
     coast_roughness: float = 0.15
+    title_x: float | None = None
+    title_y: float | None = None
+    title_font_size: float = 26.0
+    title_bold: bool = False
+    title_italic: bool = False
 
     def normalize(self) -> MapConfig:
         """Return a config with places/routes filled and stable ids assigned."""
@@ -291,11 +298,12 @@ class MapConfig:
                 )
             return out
 
-        def _with_ids_mtn(items: list[MountainRange]) -> list[MountainRange]:
-            out = []
-            for i, m in enumerate(items):
-                out.append(
-                    MountainRange(
+        def _with_ids_mtn(items: dict[str, MountainRange] | list[MountainRange]) -> dict[str, MountainRange]:
+            out: dict[str, MountainRange] = {}
+            if isinstance(items, list):
+                for i, m in enumerate(items):
+                    mid = m.id or f"mountain_{i}"
+                    out[mid] = MountainRange(
                         kind=m.kind,
                         center=m.center,
                         radii=m.radii,
@@ -305,9 +313,27 @@ class MapConfig:
                         mouth_start_deg=m.mouth_start_deg,
                         mouth_end_deg=m.mouth_end_deg,
                         num_peaks=m.num_peaks,
-                        id=m.id or f"mountain_{i}",
+                        size=m.size if hasattr(m, 'size') else 50.0,
+                        rotation=m.rotation if hasattr(m, 'rotation') else 0.0,
+                        id=mid,
                     )
-                )
+            else:
+                for k, m in items.items():
+                    mid = m.id or k or new_id("mountain")
+                    out[mid] = MountainRange(
+                        kind=m.kind,
+                        center=m.center,
+                        radii=m.radii,
+                        points=[(float(x), float(y)) for x, y in m.points],
+                        levels=m.levels,
+                        density=m.density,
+                        mouth_start_deg=m.mouth_start_deg,
+                        mouth_end_deg=m.mouth_end_deg,
+                        num_peaks=m.num_peaks,
+                        size=m.size if hasattr(m, 'size') else 50.0,
+                        rotation=m.rotation if hasattr(m, 'rotation') else 0.0,
+                        id=mid,
+                    )
             return out
 
         def _with_ids_forest(items: list[ForestStand]) -> list[ForestStand]:
@@ -333,7 +359,7 @@ class MapConfig:
             style_kit=self.style_kit,
             landmass=_with_ids_land(list(self.landmass)),
             biome_regions=_with_ids_biome(list(self.biome_regions)),
-            mountain_ranges=_with_ids_mtn(list(self.mountain_ranges)),
+            mountain_ranges=_with_ids_mtn(self.mountain_ranges),
             forest_stands=_with_ids_forest(list(self.forest_stands)),
             places=places,
             routes=routes,
@@ -342,6 +368,8 @@ class MapConfig:
             decor=self.decor,
             detail=self.detail,
             coast_roughness=self.coast_roughness,
+            title_x=self.title_x,
+            title_y=self.title_y,
         )
 
     def validate(self) -> None:
@@ -518,15 +546,16 @@ def _mapconfig_from_dict(data: dict[str, Any]) -> MapConfig:
             )
         return out
 
-    def mtn_list(raw: Any) -> list[MountainRange]:
-        out: list[MountainRange] = []
-        for i, item in enumerate(raw or []):
-            if not isinstance(item, dict):
-                continue
-            center = item.get("center")
-            radii = item.get("radii")
-            out.append(
-                MountainRange(
+    def mtn_list(raw: Any) -> dict[str, MountainRange]:
+        out: dict[str, MountainRange] = {}
+        if isinstance(raw, dict):
+            for k, item in raw.items():
+                if not isinstance(item, dict):
+                    continue
+                mid = str(item.get("id") or k or new_id("mountain"))
+                center = item.get("center")
+                radii = item.get("radii")
+                out[mid] = MountainRange(
                     kind=item.get("kind") or "ring",
                     center=_as_tuple2(center) if center else None,
                     radii=_as_tuple2(radii) if radii else None,
@@ -536,9 +565,31 @@ def _mapconfig_from_dict(data: dict[str, Any]) -> MapConfig:
                     mouth_start_deg=float(item.get("mouth_start_deg") or 0),
                     mouth_end_deg=float(item.get("mouth_end_deg") or 0),
                     num_peaks=int(item.get("num_peaks") or 54),
-                    id=str(item.get("id") or f"mountain_{i}"),
+                    size=float(item.get("size") or 50.0),
+                    rotation=float(item.get("rotation") or 0.0),
+                    id=mid,
                 )
-            )
+        else:
+            for i, item in enumerate(raw or []):
+                if not isinstance(item, dict):
+                    continue
+                mid = str(item.get("id") or f"mountain_{i}")
+                center = item.get("center")
+                radii = item.get("radii")
+                out[mid] = MountainRange(
+                    kind=item.get("kind") or "ring",
+                    center=_as_tuple2(center) if center else None,
+                    radii=_as_tuple2(radii) if radii else None,
+                    points=_as_points(item.get("points")),
+                    levels=int(item.get("levels") or 1),
+                    density=float(item.get("density") or 1.0),
+                    mouth_start_deg=float(item.get("mouth_start_deg") or 0),
+                    mouth_end_deg=float(item.get("mouth_end_deg") or 0),
+                    num_peaks=int(item.get("num_peaks") or 54),
+                    size=float(item.get("size") or 50.0),
+                    rotation=float(item.get("rotation") or 0.0),
+                    id=mid,
+                )
         return out
 
     def forest_list(raw: Any) -> list[ForestStand]:
@@ -600,6 +651,11 @@ def _mapconfig_from_dict(data: dict[str, Any]) -> MapConfig:
         coast_roughness=float(
             data.get("coast_roughness") if data.get("coast_roughness") is not None else 0.15
         ),
+        title_x=float(data.get("title_x")) if data.get("title_x") is not None else None,
+        title_y=float(data.get("title_y")) if data.get("title_y") is not None else None,
+        title_font_size=float(data.get("title_font_size") if data.get("title_font_size") is not None else 26.0),
+        title_bold=bool(data.get("title_bold", False)),
+        title_italic=bool(data.get("title_italic", False)),
     )
 
 

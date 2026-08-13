@@ -64,8 +64,8 @@ AUTUMN_CONFIG = MapConfig(
         BiomeRegion("Harvest Plain", "plain", (320.0, 420.0), (130.0, 90.0), 0.65),
         BiomeRegion("Orchards", "plain", (450.0, 520.0), (80.0, 45.0), 0.5),
     ],
-    mountain_ranges=[
-        MountainRange(
+    mountain_ranges={
+        "northern_spine": MountainRange(
             kind="ridge",
             points=[
                 (60.0, 200.0),
@@ -80,7 +80,7 @@ AUTUMN_CONFIG = MapConfig(
             ],
             density=0.9,
         ),
-    ],
+    },
     forest_stands=[
         ForestStand((560.0, 300.0), (140.0, 100.0), "canopy", 0.85, 12),
         ForestStand((450.0, 520.0), (70.0, 40.0), "stamp", 0.6, 5),

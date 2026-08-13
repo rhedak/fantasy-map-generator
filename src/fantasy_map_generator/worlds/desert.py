@@ -64,8 +64,8 @@ DESERT_CONFIG = MapConfig(
         BiomeRegion("Salt Flats", "plain", (280.0, 480.0), (90.0, 50.0), 0.4),
         BiomeRegion("Northern Dunes", "desert", (650.0, 220.0), (120.0, 70.0), 0.6),
     ],
-    mountain_ranges=[
-        MountainRange(
+    mountain_ranges={
+        "northern_rim": MountainRange(
             kind="ridge",
             points=[
                 (80.0, 160.0),
@@ -77,12 +77,12 @@ DESERT_CONFIG = MapConfig(
             ],
             density=0.85,
         ),
-        MountainRange(
+        "southern_peaks": MountainRange(
             kind="ridge",
             points=[(700.0, 480.0), (780.0, 520.0), (880.0, 500.0), (940.0, 540.0)],
             density=0.5,
         ),
-    ],
+    },
     forest_stands=[
         # oasis palms (sparse canopy)
         ForestStand((200.0, 300.0), (35.0, 25.0), "canopy", 0.9, 3),

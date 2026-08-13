@@ -177,6 +177,89 @@ def normalize_json(data: str) -> str:
         return json.dumps({"error": str(e)})
 
 
+def add_mountain(data: str) -> str:
+    """Add a new mountain range to the config."""
+    try:
+        payload = json.loads(data)
+    except (TypeError, ValueError):
+        return json.dumps({"error": "Invalid JSON payload"})
+    try:
+        config = _resolve_config(payload, payload.get("seed", 42))
+
+        kind = payload.get("kind", "ridge")
+        points = payload.get("points", [])
+        center = payload.get("center")
+        radii = payload.get("radii")
+        density = float(payload.get("density", 0.7))
+
+        from fantasy_map_generator.config import MountainRange, new_id
+
+        mid = new_id("mountain")
+        mountain = MountainRange(
+            kind=kind,
+            center=tuple(center) if center else None,
+            radii=tuple(radii) if radii else None,
+            points=[(float(x), float(y)) for x, y in points],
+            density=density,
+        )
+
+        config.mountain_ranges[mid] = mountain
+        config.validate()
+        return json.dumps({"config": config.to_dict()})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+def update_mountain(data: str) -> str:
+    """Update a mountain's properties."""
+    try:
+        payload = json.loads(data)
+    except (TypeError, ValueError):
+        return json.dumps({"error": "Invalid JSON payload"})
+    try:
+        config = _resolve_config(payload, payload.get("seed", 42))
+        mid = payload.get("id")
+        if not mid or mid not in config.mountain_ranges:
+            return json.dumps({"error": f"Mountain {mid} not found"})
+
+        mr = config.mountain_ranges[mid]
+
+        if "density" in payload:
+            mr.density = float(payload["density"])
+        if "kind" in payload:
+            mr.kind = payload["kind"]
+        if "points" in payload:
+            mr.points = [(float(x), float(y)) for x, y in payload["points"]]
+        if "center" in payload and payload["center"]:
+            mr.center = tuple(payload["center"])
+        if "radii" in payload and payload["radii"]:
+            mr.radii = tuple(payload["radii"])
+
+        config.validate()
+        return json.dumps({"config": config.to_dict()})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
+def delete_mountain(data: str) -> str:
+    """Delete a mountain from the config."""
+    try:
+        payload = json.loads(data)
+    except (TypeError, ValueError):
+        return json.dumps({"error": "Invalid JSON payload"})
+    try:
+        config = _resolve_config(payload, payload.get("seed", 42))
+        mid = payload.get("id")
+        if not mid or mid not in config.mountain_ranges:
+            return json.dumps({"error": f"Mountain {mid} not found"})
+
+        del config.mountain_ranges[mid]
+        config.validate()
+        return json.dumps({"config": config.to_dict()})
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+
+
 def from_svg_json(data: str) -> str:
     try:
         payload = json.loads(data)

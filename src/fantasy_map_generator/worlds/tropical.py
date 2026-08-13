@@ -60,22 +60,22 @@ TROPICAL_CONFIG = MapConfig(
         BiomeRegion("Jungle", "forest", (420.0, 340.0), (120.0, 85.0), 0.8),
         BiomeRegion("Lagoon Shore", "coast", (700.0, 400.0), (70.0, 50.0), 0.5),
     ],
-    mountain_ranges=[
-        MountainRange(
+    mountain_ranges={
+        "central_peaks": MountainRange(
             kind="stacked",
             center=(420.0, 330.0),
             radii=(110.0, 80.0),
             levels=3,
             density=0.85,
         ),
-        MountainRange(
+        "island_peaks": MountainRange(
             kind="stacked",
             center=(700.0, 390.0),
             radii=(50.0, 40.0),
             levels=2,
             density=0.5,
         ),
-    ],
+    },
     forest_stands=[
         ForestStand((400.0, 360.0), (100.0, 70.0), "stamp", 0.95, 10),
         ForestStand((690.0, 410.0), (55.0, 40.0), "stamp", 0.7, 5),
