@@ -18,6 +18,7 @@ from fantasy_map_generator.config import (
     MountainRange,
     Palette,
     Place,
+    RegionLabel,
     Route,
 )
 
@@ -245,6 +246,39 @@ def _land_points(
         return out
     rough = max(body.rough, coast_roughness)
     return _rough_ellipse(rng, body.center, body.radii, rough)
+
+
+def _clip_polygon_x_range(
+    points: list[tuple[float, float]], x_min: float, x_max: float
+) -> list[tuple[float, float]]:
+    """Sutherland-Hodgman clip of a polygon against the vertical band
+    [x_min, x_max] -- used to carve a kingdom's territory out of the actual
+    landmass coastline rather than approximating it with a freestanding
+    ellipse."""
+
+    def _clip_half(pts: list[tuple[float, float]], x_bound: float, keep_ge: bool) -> list[tuple[float, float]]:
+        out: list[tuple[float, float]] = []
+        n = len(pts)
+        for i in range(n):
+            cur = pts[i]
+            prev = pts[i - 1]
+            cur_in = (cur[0] >= x_bound) if keep_ge else (cur[0] <= x_bound)
+            prev_in = (prev[0] >= x_bound) if keep_ge else (prev[0] <= x_bound)
+            if cur_in:
+                if not prev_in:
+                    t = (x_bound - prev[0]) / (cur[0] - prev[0])
+                    out.append((x_bound, prev[1] + t * (cur[1] - prev[1])))
+                out.append(cur)
+            elif prev_in:
+                t = (x_bound - prev[0]) / (cur[0] - prev[0])
+                out.append((x_bound, prev[1] + t * (cur[1] - prev[1])))
+        return out
+
+    clipped = _clip_half(points, x_min, keep_ge=True)
+    if len(clipped) < 3:
+        return []
+    clipped = _clip_half(clipped, x_max, keep_ge=False)
+    return clipped
 
 
 def _biome_color(palette: Palette, biome: str) -> str:
@@ -772,6 +806,108 @@ def _decor_cartouche(cx: float, cy: float, title: str, palette: Palette) -> list
     ]
 
 
+def _region_label(label: RegionLabel, palette: Palette) -> str:
+    """A large political/kingdom name spanning its own territory (see
+    RegionLabel's own docstring for how this differs from a BiomeRegion's
+    smaller, density-gated label)."""
+    cx, cy = label.center
+    txt = _text(
+        cx,
+        cy,
+        label.name.upper(),
+        size=label.font_size,
+        weight="bold",
+        fill=palette.text,
+        spacing=3.0,
+    )
+    if not label.rotation:
+        return txt
+    return f'<g transform="rotate({label.rotation:.1f} {cx:.1f} {cy:.1f})">{txt}</g>'
+
+
+_LEGEND_GLYPHS: dict[str, str] = {
+    "mountain": "mountain",
+    "forest": "forest",
+    "desert": "desert",
+    "swamp": "swamp",
+    "capital": "capital",
+    "city": "city",
+    "town": "town",
+    "village": "village",
+    "hamlet": "village",
+    "castle": "capital",
+    "ruin": "village",
+    "road": "road",
+    "trail": "trail",
+    "river": "river",
+}
+
+
+def _legend_glyph(kind: str, cx: float, cy: float, palette: Palette) -> list[str]:
+    """A small (~12px) symbol matching one row of the legend box. Reuses the
+    same simple shapes as the full-size map features rather than inventing
+    new icon art (a scaled-down triangle for a mountain, a dot for a
+    settlement, a short dash for a route), so the legend key actually
+    resembles what's drawn on the map itself."""
+    kind = _LEGEND_GLYPHS.get(kind, kind)
+    if kind == "mountain":
+        return [_polygon([(cx, cy - 5), (cx - 5, cy + 5), (cx + 5, cy + 5)], fill=palette.mountain, stroke=palette.mountain_stroke, sw=0.6)]
+    if kind == "forest":
+        return [_polygon([(cx, cy - 6), (cx - 4, cy + 4), (cx + 4, cy + 4)], fill=palette.forest)]
+    if kind == "desert":
+        return [_circle(cx + dx, cy, 1.1, fill=palette.text_faint) for dx in (-4, 0, 4)]
+    if kind == "swamp":
+        return [_path([(cx - 5, cy), (cx - 2, cy - 3), (cx + 1, cy), (cx + 4, cy - 3)], stroke=palette.water, sw=1.2)]
+    if kind in {"capital", "city", "town", "village"}:
+        r = {"capital": 4.0, "city": 3.2, "town": 2.6, "village": 2.0}[kind]
+        return [_circle(cx, cy, r, fill=palette.settlement, stroke=palette.ink, sw=0.6)]
+    if kind in {"road", "trail"}:
+        dash = ' stroke-dasharray="2 3"' if kind == "trail" else ""
+        return [f'<line x1="{cx - 6:.1f}" y1="{cy:.1f}" x2="{cx + 6:.1f}" y2="{cy:.1f}" stroke="{palette.road}" stroke-width="1.6"{dash}/>']
+    if kind == "river":
+        return [f'<line x1="{cx - 6:.1f}" y1="{cy:.1f}" x2="{cx + 6:.1f}" y2="{cy:.1f}" stroke="{palette.water}" stroke-width="2"/>']
+    return []
+
+
+def _decor_legend(x: float, y: float, entries: list[tuple[str, str]], palette: Palette) -> list[str]:
+    """A bordered key box listing (kind, label) pairs, e.g. [("capital",
+    "Capital"), ("mountain", "Mountains"), ("trail", "Trade Route")]."""
+    row_h = 16.0
+    w = 130.0
+    h = 14.0 + row_h * len(entries)
+    out = [
+        _rect(x, y, w, h, fill=palette.paper, stroke=palette.ink, sw=1.2, opacity=0.92),
+        _rect(x + 3, y + 3, w - 6, h - 6, fill="none", stroke=palette.gold, sw=0.8),
+        _text(x + w / 2, y + 12, "Legend", size=11, fill=palette.ink, weight="bold", outline=False),
+    ]
+    for i, (kind, label) in enumerate(entries):
+        row_y = y + 24 + i * row_h
+        out.extend(_legend_glyph(kind, x + 14, row_y - 3, palette))
+        out.append(_text(x + 26, row_y, label, size=10, anchor="start", fill=palette.ink, outline=False))
+    return out
+
+
+def _decor_ship(cx: float, cy: float, palette: Palette, scale: float = 1.0) -> list[str]:
+    """A small sailing-ship glyph for open ocean; positions are hand-picked
+    per world (see MapConfig.ships), not auto-placed/collision-avoided."""
+    s = 9.0 * scale
+    hull = _path(
+        [(cx - s, cy), (cx - s * 0.6, cy + s * 0.5), (cx + s * 0.6, cy + s * 0.5), (cx + s, cy)],
+        stroke=palette.ink,
+        sw=1.0,
+        opacity=0.85,
+    )
+    mast = f'<line x1="{cx:.1f}" y1="{cy:.1f}" x2="{cx:.1f}" y2="{cy - s * 1.6:.1f}" stroke="{palette.ink}" stroke-width="1"/>'
+    sail = _polygon(
+        [(cx, cy - s * 1.6), (cx, cy - s * 0.2), (cx + s * 0.9, cy - s * 0.3)],
+        fill=palette.paper,
+        stroke=palette.ink,
+        sw=0.6,
+        opacity=0.9,
+    )
+    return [hull, mast, sail]
+
+
 # --- Pipeline ---------------------------------------------------------------
 
 
@@ -943,17 +1079,22 @@ def render_map(
 
     # Biomes
     for region in cfg.biome_regions:
-        color = _biome_color(palette, region.biome)
-        layers.append(
-            _ellipse_fill(
-                region.center[0],
-                region.center[1],
-                region.radii[0],
-                region.radii[1],
-                fill=color,
-                opacity=0.22 + 0.25 * region.density,
+        color = region.fill or _biome_color(palette, region.biome)
+        if region.x_range is not None and land_polys:
+            territory = _clip_polygon_x_range(land_polys[0], region.x_range[0], region.x_range[1])
+            if territory:
+                layers.append(_polygon(territory, fill=color, opacity=0.92))
+        else:
+            layers.append(
+                _ellipse_fill(
+                    region.center[0],
+                    region.center[1],
+                    region.radii[0],
+                    region.radii[1],
+                    fill=color,
+                    opacity=0.22 + 0.25 * region.density,
+                )
             )
-        )
         if region.biome == "desert":
             layers.extend(
                 _dune_hatch(rng, region.center, region.radii, palette.road_dim, region.density)
@@ -1154,6 +1295,14 @@ def render_map(
                 )
             )
 
+    # Kingdom/political region labels (large, distinct from the biome labels above)
+    for region_label in cfg.region_labels:
+        layers.append(_region_label(region_label, palette))
+
+    # Ships (hand-placed, see MapConfig.ships)
+    for sx, sy in cfg.ships:
+        layers.extend(_decor_ship(sx, sy, palette))
+
     # Title / cartouche
     if cfg.decor.cartouche:
         layers.extend(_decor_cartouche(canvas_width / 2, 40, cfg.name, palette))
@@ -1188,6 +1337,9 @@ def render_map(
         layers.extend(_decor_compass(canvas_width - 70, canvas_height - 70, palette, scale=0.9))
     if cfg.decor.scale:
         layers.extend(_decor_scale(40, canvas_height - 40, palette))
+    if cfg.legend_entries:
+        lx, ly = cfg.legend_pos or (canvas_width - 150, canvas_height - 30 - 14 - 16 * len(cfg.legend_entries))
+        layers.extend(_decor_legend(lx, ly, cfg.legend_entries, palette))
 
     svg_body = "\n  ".join(layers)
 

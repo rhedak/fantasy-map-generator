@@ -69,6 +69,28 @@ class BiomeRegion:
     center: tuple[float, float]
     radii: tuple[float, float]
     density: float = 0.5
+    fill: str | None = None
+    # When set, this region renders as a territory following the actual
+    # landmass coastline (clipped to this (x_min, x_max) band) instead of a
+    # freestanding ellipse -- for political/kingdom color zones that should
+    # match the land they occupy, not just sit roughly on top of it. center/
+    # radii are still used for texture scatter (dune hatch etc.) and as the
+    # anchor for this region's own small subtitle label.
+    x_range: tuple[float, float] | None = None
+    id: str = ""
+
+
+@dataclass
+class RegionLabel:
+    """A large political/kingdom name spanning its own territory, distinct
+    from BiomeRegion's smaller, density-gated biome label (e.g. a kingdom
+    name like "WODENSREICH" versus a biome note like "Scorched Wastes"
+    inside it -- both can appear on the same map)."""
+
+    name: str
+    center: tuple[float, float]
+    font_size: float = 30.0
+    rotation: float = 0.0
     id: str = ""
 
 
@@ -200,10 +222,18 @@ class MapConfig:
 
     landmass: list[LandBody] = field(default_factory=list)
     biome_regions: list[BiomeRegion] = field(default_factory=list)
+    region_labels: list[RegionLabel] = field(default_factory=list)
     mountain_ranges: dict[str, MountainRange] = field(default_factory=dict)
     forest_stands: list[ForestStand] = field(default_factory=list)
     places: dict[str, Place] = field(default_factory=dict)
     routes: dict[str, Route] = field(default_factory=dict)
+
+    # Ocean ship glyphs (position-only; world authors place them by hand,
+    # same as every other manually-authored map element here) and a legend
+    # box (kind, label) pairs; both render only if non-empty.
+    ships: list[tuple[float, float]] = field(default_factory=list)
+    legend_entries: list[tuple[str, str]] = field(default_factory=list)
+    legend_pos: tuple[float, float] | None = None
 
     # Backward-compatible aliases filled by normalize() if places empty
     locations: dict[str, tuple[float, float]] = field(default_factory=dict)
@@ -293,6 +323,8 @@ class MapConfig:
                         center=(float(b.center[0]), float(b.center[1])),
                         radii=(float(b.radii[0]), float(b.radii[1])),
                         density=b.density,
+                        fill=b.fill,
+                        x_range=(float(b.x_range[0]), float(b.x_range[1])) if b.x_range else None,
                         id=b.id or f"biome_{i}",
                     )
                 )
@@ -336,6 +368,20 @@ class MapConfig:
                     )
             return out
 
+        def _with_ids_region_labels(items: list[RegionLabel]) -> list[RegionLabel]:
+            out = []
+            for i, r in enumerate(items):
+                out.append(
+                    RegionLabel(
+                        name=r.name,
+                        center=(float(r.center[0]), float(r.center[1])),
+                        font_size=r.font_size,
+                        rotation=r.rotation,
+                        id=r.id or f"region_label_{i}",
+                    )
+                )
+            return out
+
         def _with_ids_forest(items: list[ForestStand]) -> list[ForestStand]:
             out = []
             for i, f in enumerate(items):
@@ -359,17 +405,24 @@ class MapConfig:
             style_kit=self.style_kit,
             landmass=_with_ids_land(list(self.landmass)),
             biome_regions=_with_ids_biome(list(self.biome_regions)),
+            region_labels=_with_ids_region_labels(list(self.region_labels)),
             mountain_ranges=_with_ids_mtn(self.mountain_ranges),
             forest_stands=_with_ids_forest(list(self.forest_stands)),
             places=places,
             routes=routes,
             locations={p.name: p.pos for p in places.values()},
+            ships=[(float(x), float(y)) for x, y in self.ships],
+            legend_entries=list(self.legend_entries),
+            legend_pos=self.legend_pos,
             palette=self.palette,
             decor=self.decor,
             detail=self.detail,
             coast_roughness=self.coast_roughness,
             title_x=self.title_x,
             title_y=self.title_y,
+            title_font_size=self.title_font_size,
+            title_bold=self.title_bold,
+            title_italic=self.title_italic,
         )
 
     def validate(self) -> None:
