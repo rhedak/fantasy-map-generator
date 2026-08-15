@@ -248,37 +248,75 @@ def _land_points(
     return _rough_ellipse(rng, body.center, body.radii, rough)
 
 
-def _clip_polygon_x_range(
-    points: list[tuple[float, float]], x_min: float, x_max: float
+def _border_x_at(border: list[tuple[float, float]], y: float) -> float:
+    """Interpolate a y-monotonic border polyline's x at a given y (clamped
+    to the endpoints outside its range)."""
+    if y <= border[0][1]:
+        return border[0][0]
+    for i in range(1, len(border)):
+        x0, y0 = border[i - 1]
+        x1, y1 = border[i]
+        if y <= y1:
+            if y1 == y0:
+                return x1
+            t = (y - y0) / (y1 - y0)
+            return x0 + t * (x1 - x0)
+    return border[-1][0]
+
+
+def _border_crossing(
+    p0: tuple[float, float], p1: tuple[float, float], border: list[tuple[float, float]]
+) -> tuple[float, float]:
+    bx0, bx1 = _border_x_at(border, p0[1]), _border_x_at(border, p1[1])
+    denom = (p1[0] - p0[0]) - (bx1 - bx0)
+    if abs(denom) < 1e-9:
+        return p1
+    t = max(0.0, min(1.0, (bx0 - p0[0]) / denom))
+    return (p0[0] + t * (p1[0] - p0[0]), p0[1] + t * (p1[1] - p0[1]))
+
+
+def _clip_polygon_by_border(
+    points: list[tuple[float, float]], border: list[tuple[float, float]], keep_right: bool
 ) -> list[tuple[float, float]]:
-    """Sutherland-Hodgman clip of a polygon against the vertical band
-    [x_min, x_max] -- used to carve a kingdom's territory out of the actual
-    landmass coastline rather than approximating it with a freestanding
-    ellipse."""
+    """Split a landmass polygon along a jagged, y-monotonic border curve
+    (see make_meander_border), keeping the x >= border_x(y) side if
+    keep_right else the x <= side. Unlike straight-line Sutherland-Hodgman
+    clipping, the kept side's boundary must actually trace the border's own
+    zigzag vertices, not just a straight line between where the coastline
+    enters and exits the border band -- so this finds the single contiguous
+    run of "inside" coastline vertices (there are exactly two crossings:
+    where the border meets the top coast and the bottom coast, since the
+    border spans the landmass's full vertical extent) and splices in the
+    matching slice of the border polyline to close the shape."""
+    n = len(points)
 
-    def _clip_half(pts: list[tuple[float, float]], x_bound: float, keep_ge: bool) -> list[tuple[float, float]]:
-        out: list[tuple[float, float]] = []
-        n = len(pts)
-        for i in range(n):
-            cur = pts[i]
-            prev = pts[i - 1]
-            cur_in = (cur[0] >= x_bound) if keep_ge else (cur[0] <= x_bound)
-            prev_in = (prev[0] >= x_bound) if keep_ge else (prev[0] <= x_bound)
-            if cur_in:
-                if not prev_in:
-                    t = (x_bound - prev[0]) / (cur[0] - prev[0])
-                    out.append((x_bound, prev[1] + t * (cur[1] - prev[1])))
-                out.append(cur)
-            elif prev_in:
-                t = (x_bound - prev[0]) / (cur[0] - prev[0])
-                out.append((x_bound, prev[1] + t * (cur[1] - prev[1])))
-        return out
+    def is_in(p: tuple[float, float]) -> bool:
+        bx = _border_x_at(border, p[1])
+        return (p[0] >= bx) if keep_right else (p[0] <= bx)
 
-    clipped = _clip_half(points, x_min, keep_ge=True)
-    if len(clipped) < 3:
+    flags = [is_in(p) for p in points]
+    if all(flags):
+        return list(points)
+    if not any(flags):
         return []
-    clipped = _clip_half(clipped, x_max, keep_ge=False)
-    return clipped
+
+    start = next(i for i in range(n) if flags[i] and not flags[i - 1])
+    inside_pts: list[tuple[float, float]] = []
+    i = start
+    while flags[i % n]:
+        inside_pts.append(points[i % n])
+        i += 1
+    end = i % n
+
+    enter_pt = _border_crossing(points[(start - 1) % n], points[start % n], border)
+    exit_pt = _border_crossing(points[(end - 1) % n], points[end % n], border)
+
+    y_lo, y_hi = sorted((enter_pt[1], exit_pt[1]))
+    border_seg = [pt for pt in border if y_lo <= pt[1] <= y_hi]
+    if exit_pt[1] > enter_pt[1]:
+        border_seg = border_seg[::-1]
+
+    return [enter_pt, *inside_pts, exit_pt, *border_seg]
 
 
 def _biome_color(palette: Palette, biome: str) -> str:
@@ -1080,9 +1118,13 @@ def render_map(
     # Biomes
     for region in cfg.biome_regions:
         color = region.fill or _biome_color(palette, region.biome)
-        if region.x_range is not None and land_polys:
-            territory = _clip_polygon_x_range(land_polys[0], region.x_range[0], region.x_range[1])
-            if territory:
+        if (region.left_border or region.right_border) and land_polys:
+            territory = land_polys[0]
+            if region.left_border:
+                territory = _clip_polygon_by_border(territory, region.left_border, keep_right=True)
+            if territory and region.right_border:
+                territory = _clip_polygon_by_border(territory, region.right_border, keep_right=False)
+            if len(territory) >= 3:
                 layers.append(_polygon(territory, fill=color, opacity=0.92))
         else:
             layers.append(

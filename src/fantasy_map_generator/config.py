@@ -47,6 +47,40 @@ def new_id(prefix: str = "id") -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
 
 
+def make_meander_border(
+    x_nominal: float,
+    y_start: float,
+    y_end: float,
+    seed: int,
+    amplitude: float = 70.0,
+    step: float = 18.0,
+    reversal_chance: float = 0.7,
+) -> list[tuple[float, float]]:
+    """A jagged, single-valued-in-y border line zigzagging around x_nominal --
+    for a political border that reads as organic (think Europe's borders:
+    frequent sharp back-and-forth, not a smooth drift) rather than a ruler-
+    straight seam. Biases toward flipping direction each step so short runs
+    in the same direction (which read as a diagonal line at map scale) stay
+    rare. Deterministic per seed so it can be baked into a static world
+    config and shared by the two BiomeRegions it separates (same points on
+    both sides, so their territories always meet exactly with no gap or
+    overlap)."""
+    import random as _random
+
+    rng = _random.Random(seed)
+    pts: list[tuple[float, float]] = [(x_nominal, y_start)]
+    x, y = x_nominal, y_start
+    direction = rng.choice([-1, 1])
+    while y < y_end:
+        y = min(y + step, y_end)
+        if rng.random() < reversal_chance:
+            direction *= -1
+        x += direction * rng.uniform(amplitude * 0.35, amplitude * 0.85)
+        x = max(x_nominal - amplitude, min(x_nominal + amplitude, x))
+        pts.append((x, y))
+    return pts
+
+
 @dataclass
 class LandBody:
     """A landmass silhouette (ellipse or polygon)."""
@@ -70,13 +104,17 @@ class BiomeRegion:
     radii: tuple[float, float]
     density: float = 0.5
     fill: str | None = None
-    # When set, this region renders as a territory following the actual
-    # landmass coastline (clipped to this (x_min, x_max) band) instead of a
-    # freestanding ellipse -- for political/kingdom color zones that should
-    # match the land they occupy, not just sit roughly on top of it. center/
-    # radii are still used for texture scatter (dune hatch etc.) and as the
-    # anchor for this region's own small subtitle label.
-    x_range: tuple[float, float] | None = None
+    # When either is set, this region renders as a territory following the
+    # actual landmass coastline (clipped against these west/east border
+    # curves, see make_meander_border) instead of a freestanding ellipse --
+    # for political/kingdom color zones that should match the land they
+    # occupy. Pass the *same* border object to the two regions it separates
+    # so their territories meet exactly, no gap or overlap. None on a side
+    # means "no clip there" (the region runs to the coast/canvas edge).
+    # center/radii are still used for texture scatter (dune hatch etc.) and
+    # as the anchor for this region's own small subtitle label.
+    left_border: list[tuple[float, float]] | None = None
+    right_border: list[tuple[float, float]] | None = None
     id: str = ""
 
 
@@ -324,7 +362,8 @@ class MapConfig:
                         radii=(float(b.radii[0]), float(b.radii[1])),
                         density=b.density,
                         fill=b.fill,
-                        x_range=(float(b.x_range[0]), float(b.x_range[1])) if b.x_range else None,
+                        left_border=[(float(x), float(y)) for x, y in b.left_border] if b.left_border else None,
+                        right_border=[(float(x), float(y)) for x, y in b.right_border] if b.right_border else None,
                         id=b.id or f"biome_{i}",
                     )
                 )

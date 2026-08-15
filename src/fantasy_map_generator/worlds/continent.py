@@ -21,7 +21,17 @@ from fantasy_map_generator.config import (
     Place,
     RegionLabel,
     Route,
+    make_meander_border,
 )
+
+# Shared political borders (west to east): each is a single meandering line,
+# reused by both flanking BiomeRegions so their territories meet exactly with
+# no gap or overlap. Nominal x lands on that border's mountain-pass gap;
+# mountain ranges get repositioned to track these once the border shape is
+# picked (see continent_map_scratch notes -- borders first, mountains after).
+_BORDER_WODENSREICH_OKIRI = make_meander_border(615.0, 240.0, 680.0, seed=101)
+_BORDER_OKIRI_TUMEN = make_meander_border(905.0, 240.0, 680.0, seed=102)
+_BORDER_TUMEN_DEVRAN = make_meander_border(1160.0, 240.0, 680.0, seed=103)
 
 CONTINENT_PALETTE = Palette(
     background="#1c2a3a",
@@ -98,10 +108,22 @@ CONTINENT_CONFIG = MapConfig(
         # polygon at render time) rather than approximating each kingdom with
         # a freestanding ellipse; the cuts land on the mountain-range gaps so
         # the color seam and the mountains coincide.
-        BiomeRegion("", "plain", (380.0, 440.0), (210.0, 190.0), 0.5, fill=WODENSREICH_COLOR, x_range=(100.0, 615.0)),
-        BiomeRegion("The Valley of Mists", "forest", (770.0, 375.0), (110.0, 210.0), 0.6, fill=OKIRI_COLOR, x_range=(615.0, 905.0)),
-        BiomeRegion("The Tumen Plains", "plain", (1040.0, 345.0), (110.0, 210.0), 0.4, fill=TUMEN_COLOR, x_range=(905.0, 1160.0)),
-        BiomeRegion("Scorching Wellheads", "desert", (1270.0, 365.0), (130.0, 210.0), 0.75, fill=DEVRAN_COLOR, x_range=(1160.0, 1500.0)),
+        BiomeRegion(
+            "", "plain", (380.0, 440.0), (210.0, 190.0), 0.5,
+            fill=WODENSREICH_COLOR, right_border=_BORDER_WODENSREICH_OKIRI,
+        ),
+        BiomeRegion(
+            "The Valley of Mists", "forest", (770.0, 375.0), (110.0, 210.0), 0.6,
+            fill=OKIRI_COLOR, left_border=_BORDER_WODENSREICH_OKIRI, right_border=_BORDER_OKIRI_TUMEN,
+        ),
+        BiomeRegion(
+            "The Tumen Plains", "plain", (1040.0, 345.0), (110.0, 210.0), 0.4,
+            fill=TUMEN_COLOR, left_border=_BORDER_OKIRI_TUMEN, right_border=_BORDER_TUMEN_DEVRAN,
+        ),
+        BiomeRegion(
+            "Scorching Wellheads", "desert", (1270.0, 365.0), (130.0, 210.0), 0.75,
+            fill=DEVRAN_COLOR, left_border=_BORDER_TUMEN_DEVRAN,
+        ),
     ],
     region_labels=[
         RegionLabel("Wodensreich", center=(380.0, 300.0), font_size=36.0),
