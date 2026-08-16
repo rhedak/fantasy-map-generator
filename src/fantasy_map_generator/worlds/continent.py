@@ -30,7 +30,7 @@ from fantasy_map_generator.config import (
 # mountain ranges get repositioned to track these once the border shape is
 # picked (see continent_map_scratch notes -- borders first, mountains after).
 _BORDER_WODENSREICH_OKIRI = make_meander_border(615.0, 240.0, 680.0, seed=101)
-_BORDER_OKIRI_TUMEN = make_meander_border(905.0, 240.0, 680.0, seed=102)
+_BORDER_OKIRI_TUMEN = make_meander_border(960.0, 240.0, 680.0, seed=102)
 _BORDER_TUMEN_DEVRAN = make_meander_border(1160.0, 240.0, 680.0, seed=103)
 
 CONTINENT_PALETTE = Palette(
@@ -54,7 +54,7 @@ CONTINENT_PALETTE = Palette(
     # _text()) rather than dark ink-on-parchment, per author feedback on draft 1.
     text="#ffffff",
     text_dim="#ffffff",
-    text_faint="#7a6748",
+    text_faint="#ffffff",
     gold="#b8860b",
     ink="#2a1f14",
     paper="#efe3c4",
@@ -132,28 +132,46 @@ CONTINENT_CONFIG = MapConfig(
         RegionLabel("Devran", center=(1270.0, 300.0), font_size=36.0),
     ],
     mountain_ranges={
-        # Wodensreich/Okiri border: one well-defined pass (Ch23:86, Ch34:209/227).
-        "western_range": MountainRange(
-            kind="ridge",
-            points=[(620.0, 290.0), (630.0, 380.0), (600.0, 470.0), (640.0, 560.0)],
-            density=0.9,
+        # Okiri's defining feature: the Valley of Mists is a ring of mountains
+        # with its capital inside, not a wall on either political border (see
+        # style-anchors/map.png, the Valley's own local map -- "Kiri no
+        # Chuushin"/"the Basin" ringed by peaks). The mouth faces
+        # south-southwest, toward Kiriguchi and the rest of Okiri's *western*
+        # settlements (outside the ring, still Okiri, not Wodensreich).
+        "valley_ring": MountainRange(
+            kind="ring",
+            center=(780.0, 460.0),
+            radii=(65.0, 65.0),
+            mouth_start_deg=110.0,
+            mouth_end_deg=190.0,
+            num_peaks=40,
+            density=1.0,
         ),
-        # Okiri/Tumen border: unstructured, several small rough passes rather
-        # than one clean crossing (characters.md's "Warden of the Eastern Veil").
-        "eastern_range": MountainRange(
+        # East of the ring: broken, low hills with several small rough passes
+        # rather than one clean crossing (characters.md's "Warden of the
+        # Eastern Veil") -- these lead to Okiri's own eastern villages, still
+        # well short of the Okiri/Tumen political border further east.
+        "eastern_hills": MountainRange(
             kind="ridge",
-            points=[(900.0, 300.0), (920.0, 400.0), (890.0, 500.0), (930.0, 580.0)],
-            density=0.35,
+            points=[(865.0, 375.0), (888.0, 420.0), (858.0, 465.0), (882.0, 515.0), (855.0, 570.0)],
+            density=0.3,
         ),
     },
     forest_stands=[
-        ForestStand((760.0, 400.0), (60.0, 45.0), "conifer", 0.7, 4),
-        ForestStand((850.0, 470.0), (50.0, 35.0), "conifer", 0.6, 3),
+        ForestStand((770.0, 415.0), (45.0, 32.0), "conifer", 0.6, 3),
+        ForestStand((805.0, 500.0), (40.0, 28.0), "conifer", 0.55, 3),
     ],
     places={
         "Eisenhort": Place(320.0, 420.0, tier="capital"),
-        "Kasumikyo": Place(760.0, 440.0, tier="ruin"),
-        "Kiriguchi": Place(700.0, 480.0, tier="village"),
+        "Kasumikyo": Place(785.0, 455.0, tier="ruin"),
+        # Outside the ring, right against the mouth's own implied arc (as if
+        # the ring continued through the gap) -- Okiri's own western
+        # settlement, not Wodensreich (style-anchors/map.png's "Kiriguchi /
+        # Nebelmark", outside the Mist Wall, hugging it closely).
+        "Kiriguchi": Place(680.0, 518.0, tier="village"),
+        # East of the ring, through the broken eastern hills, still Okiri --
+        # working name pending author sign-off, same as Devran's capital.
+        "Higashimura": Place(900.0, 475.0, tier="hamlet"),
         "Boru-Khal": Place(1000.0, 380.0, tier="village"),
         "Altan-Oyun": Place(1100.0, 480.0, tier="hamlet"),
         "Sarayonu": Place(1270.0, 420.0, tier="capital"),
@@ -162,13 +180,17 @@ CONTINENT_CONFIG = MapConfig(
     },
     routes={
         # The Wodensreich's own "eastern trade roads" (Ch26:17-18): maintained
-        # road through Wodensreich/Okiri, unstructured trail on past it.
+        # road through to Kiriguchi, then through the ring's mouth to Kasumikyo.
         "western_road": Route(
-            [(320.0, 420.0), (500.0, 440.0), (650.0, 460.0), (760.0, 440.0)],
+            [(320.0, 420.0), (500.0, 460.0), (620.0, 500.0), (680.0, 518.0), (723.0, 493.0), (785.0, 455.0)],
             kind="road",
         ),
+        # Kasumikyo out through the eastern gap in the hills, on to the
+        # Tumen plains and Devran -- unstructured trail the whole way past
+        # the ring, matching the Tumen border's own "no clean crossing".
         "eastern_trail": Route(
-            [(760.0, 440.0), (900.0, 420.0), (1050.0, 400.0), (1180.0, 410.0), (1270.0, 420.0)],
+            [(785.0, 455.0), (845.0, 460.0), (900.0, 475.0), (960.0, 440.0),
+             (1000.0, 380.0), (1050.0, 400.0), (1180.0, 410.0), (1270.0, 420.0)],
             kind="trail",
         ),
     },

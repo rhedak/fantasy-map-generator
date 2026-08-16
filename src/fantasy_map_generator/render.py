@@ -1333,7 +1333,6 @@ def render_map(
                     fill=palette.text_faint,
                     italic=True,
                     spacing=2.5,
-                    outline=False,
                 )
             )
 
