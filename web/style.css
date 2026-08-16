@@ -16,6 +16,8 @@
     .page-header { max-width: 1400px; margin: 0 auto 20px; text-align: center; }
     .page-header h1 { margin: 0 0 6px; color: var(--primary); font-size: 1.8em; }
     .page-header p { margin: 4px 0; color: #666; }
+    .tagline { max-width: 40rem; margin: 4px auto; }
+    .header-links a { color: var(--primary); }
     main { max-width: 1400px; margin: 0 auto; }
     #status {
       padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; display: none;
@@ -98,3 +100,9 @@
     @media (max-width: 900px) {
       #editor-section.visible { grid-template-columns: 1fr; }
     }
+    .licensing {
+      max-width: 44rem; margin: 2rem auto 0; padding: 1.5rem 1.25rem 3rem;
+      border-top: 1px solid var(--border); color: #666; font-size: 0.9rem;
+    }
+    .licensing h2 { color: var(--primary); font-size: 1.1rem; }
+    .licensing a { color: var(--primary); }

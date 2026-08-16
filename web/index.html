@@ -4,12 +4,32 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Fantasy Map Generator</title>
+  <meta name="description" content="Procedural fantasy world maps, drawn as parametric SVG. No AI, no hand-tracing. Runs entirely in your browser.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="page-header">
     <h1>Fantasy Map Generator</h1>
-    <p>Pick a world, place settlements and paths, select and edit them.</p>
+    <p class="tagline">
+      Every map here is drawn by code: no AI, no hand-tracing, pure
+      procedural SVG built from a seed and a handful of parameters. Pick a
+      world, drag settlements, mountains and coastlines around, and export
+      what you get. Runs entirely in your browser: nothing you draw here is
+      sent anywhere.
+    </p>
+    <p class="header-links">
+      <a href="https://www.honeyfeed.fm/novels/32712" target="_blank" rel="noopener">
+        Read the webnovel the Valley preset draws the map for
+      </a>
+      &middot;
+      <a href="https://rhedak.github.io/anime-character-creator/" target="_blank" rel="noopener">
+        Try the character creator
+      </a>
+      &middot;
+      <a href="https://github.com/rhedak/fantasy-map-generator" target="_blank" rel="noopener">
+        View the source
+      </a>
+    </p>
   </header>
   <main>
     <p id="status" role="status" aria-live="polite"></p>
@@ -304,6 +324,26 @@
       </div>
     </section>
   </main>
+  <footer class="licensing">
+    <h2>What you can do with what you make here</h2>
+    <p>
+      The code that draws these maps is open source under the MIT licence,
+      and any map you export is yours. Use it wherever you like, including
+      commercially. No permission needed, no fee, no need to ask.
+    </p>
+    <p>One thing asked rather than required.</p>
+    <p>Please link back, to this page or to the code, wherever a map ends up.</p>
+    <p>Neither is a legal condition. There is nothing here anyone intends to enforce.</p>
+
+    <h2>Have feedback? Found a world that needs another mountain range?</h2>
+    <p>
+      Email <a href="mailto:rhedak@proton.me">rhedak@proton.me</a>, or reach
+      the author on
+      <a href="https://discord.com/users/@rhedak" target="_blank" rel="noopener">Discord</a>,
+      <a href="https://t.me/rhedak" target="_blank" rel="noopener">Telegram</a>
+      or <a href="https://x.com/rhedak1" target="_blank" rel="noopener">X</a>.
+    </p>
+  </footer>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
   <script src="app.js"></script>
 </body>
