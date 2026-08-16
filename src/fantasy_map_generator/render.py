@@ -323,11 +323,73 @@ def _clip_polygon_by_border(
 def _lake(lake: WaterBody, palette: Palette) -> str:
     cx, cy = lake.center
     rx, ry = lake.radii
+    fill = lake.fill or palette.water
     return (
         f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" '
-        f'fill="{palette.water}" fill-opacity="0.75" stroke="{palette.water_deep}" '
+        f'fill="{fill}" fill-opacity="0.75" stroke="{palette.water_deep}" '
         f'stroke-width="1" stroke-opacity="0.6"/>'
     )
+
+
+def _ellipse_polygon(
+    center: tuple[float, float], radii: tuple[float, float], n: int = 48
+) -> list[tuple[float, float]]:
+    cx, cy = center
+    rx, ry = radii
+    return [
+        (cx + rx * math.cos(math.tau * i / n), cy + ry * math.sin(math.tau * i / n)) for i in range(n)
+    ]
+
+
+def _clip_polygon_convex(
+    subject: list[tuple[float, float]], clip: list[tuple[float, float]]
+) -> list[tuple[float, float]]:
+    """Standard Sutherland-Hodgman clip of `subject` against a *convex*
+    `clip` polygon (an ellipse approximation, in practice) -- used to
+    intersect the landmass coastline with a decorative overlay region so it
+    reads as "part of the land" rather than a freestanding shape spilling
+    past the shore. Unlike _clip_polygon_by_border, this clips against a
+    full closed polygon on every side at once, which only works because the
+    clip shape is convex (each edge is a valid infinite half-plane test)."""
+    output = subject
+    n = len(clip)
+    for i in range(n):
+        cx1, cy1 = clip[i]
+        cx2, cy2 = clip[(i + 1) % n]
+        edge_x, edge_y = cx2 - cx1, cy2 - cy1
+
+        def is_inside(p: tuple[float, float], cx1: float = cx1, cy1: float = cy1, edge_x: float = edge_x, edge_y: float = edge_y) -> bool:
+            # >= 0 matches a CCW-wound clip polygon (true for _ellipse_polygon's
+            # cos/sin construction); verified against a known CCW test square.
+            return edge_x * (p[1] - cy1) - edge_y * (p[0] - cx1) >= 0
+
+        input_list, output = output, []
+        if not input_list:
+            break
+        for j in range(len(input_list)):
+            cur = input_list[j]
+            prev = input_list[j - 1]
+            cur_in, prev_in = is_inside(cur), is_inside(prev)
+            if cur_in:
+                if not prev_in:
+                    output.append(_segment_intersect(prev, cur, cx1, cy1, edge_x, edge_y))
+                output.append(cur)
+            elif prev_in:
+                output.append(_segment_intersect(prev, cur, cx1, cy1, edge_x, edge_y))
+    return output
+
+
+def _segment_intersect(
+    p0: tuple[float, float], p1: tuple[float, float], ex: float, ey: float, dx: float, dy: float
+) -> tuple[float, float]:
+    """Intersection of segment p0->p1 with the infinite line through (ex,ey)
+    with direction (dx,dy). Used by _clip_polygon_convex."""
+    sx, sy = p1[0] - p0[0], p1[1] - p0[1]
+    denom = sx * dy - sy * dx
+    if abs(denom) < 1e-9:
+        return p1
+    t = ((ex - p0[0]) * dy - (ey - p0[1]) * dx) / denom
+    return (p0[0] + t * sx, p0[1] + t * sy)
 
 
 def _biome_color(palette: Palette, biome: str) -> str:
@@ -957,6 +1019,29 @@ def _decor_ship(cx: float, cy: float, palette: Palette, scale: float = 1.0) -> l
     return [hull, mast, sail]
 
 
+def _decor_volcano(cx: float, cy: float, scale: float = 1.0) -> list[str]:
+    """A single dark volcanic cone with a glowing crater and a thin smoke
+    wisp -- distinct from an ordinary MountainRange peak (which uses the
+    world's plain mountain_color); positions are hand-picked per world (see
+    MapConfig.volcanoes)."""
+    s = 22.0 * scale
+    cone = _polygon(
+        [(cx - s * 0.65, cy + s * 0.4), (cx, cy - s), (cx + s * 0.65, cy + s * 0.4)],
+        fill="#3c2a24",
+        stroke="#241813",
+        sw=1.2,
+    )
+    crater = _circle(cx, cy - s * 0.82, s * 0.16, fill="#e8622c", stroke="#a83a18", sw=0.8)
+    glow = _circle(cx, cy - s * 0.82, s * 0.32, fill="#e8622c", opacity=0.25)
+    smoke = _path(
+        [(cx, cy - s * 1.0), (cx + s * 0.25, cy - s * 1.5), (cx - s * 0.1, cy - s * 2.0), (cx + s * 0.2, cy - s * 2.5)],
+        stroke="#8a8a8a",
+        sw=2.2,
+        opacity=0.35,
+    )
+    return [smoke, glow, cone, crater]
+
+
 # --- Pipeline ---------------------------------------------------------------
 
 
@@ -1137,6 +1222,13 @@ def render_map(
                 territory = _clip_polygon_by_border(territory, region.right_border, keep_right=False)
             if len(territory) >= 3:
                 layers.append(_polygon(territory, fill=color, opacity=0.92))
+        elif region.clip_to_land and land_polys:
+            ellipse_poly = _ellipse_polygon(region.center, region.radii)
+            clipped = _clip_polygon_convex(land_polys[0], ellipse_poly)
+            if len(clipped) >= 3:
+                layers.append(
+                    _polygon(clipped, fill=color, opacity=0.22 + 0.25 * region.density)
+                )
         else:
             layers.append(
                 _ellipse_fill(
@@ -1263,6 +1355,10 @@ def render_map(
                     _path(mr.points, stroke="#ffcc33", sw=3.0, opacity=0.45)
                 )
         layers.append(_group(elems, data_id=mrid, data_kind="mountain"))
+
+    # Volcanoes (hand-placed, see MapConfig.volcanoes)
+    for vx, vy in cfg.volcanoes:
+        layers.extend(_decor_volcano(vx, vy))
 
     # Forests
     stands = list(cfg.forest_stands)

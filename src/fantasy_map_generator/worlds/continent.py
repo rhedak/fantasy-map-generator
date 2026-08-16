@@ -125,6 +125,20 @@ CONTINENT_CONFIG = MapConfig(
             "Scorching Wellheads", "desert", (1270.0, 365.0), (130.0, 210.0), 0.75,
             fill=DEVRAN_COLOR, left_border=_BORDER_TUMEN_DEVRAN,
         ),
+        # Climate dressing (geography_reference.md's "Climate" section):
+        # overlay regions layered on top of the territory fill above, clipped
+        # to the actual coastline (clip_to_land) so they read as part of the
+        # land rather than a freestanding ellipse spilling over the ocean.
+        # Wodensreich's own coldest corner gets a tundra-fringe tint...
+        BiomeRegion("", "ice", (245.0, 370.0), (95.0, 75.0), 0.5, clip_to_land=True),
+        # ...and, for contrast within the same kingdom, a scorched-ground
+        # tint around the volcanoes in its south-west (dark ash/rock, not a
+        # climate-gradient effect -- just local geology, see the volcanoes
+        # below).
+        BiomeRegion("", "plain", (265.0, 590.0), (85.0, 55.0), 0.6, fill="#4a3428", clip_to_land=True),
+        # ...and Devran's own hottest corner gets extra-dense dune texture in
+        # a deeper, hotter shade than the rest of the Scorching Wellheads.
+        BiomeRegion("", "desert", (1345.0, 565.0), (85.0, 55.0), 1.0, fill="#a85f28", clip_to_land=True),
     ],
     region_labels=[
         RegionLabel("Wodensreich", center=(380.0, 300.0), font_size=36.0),
@@ -181,6 +195,14 @@ CONTINENT_CONFIG = MapConfig(
             points=[(865.0, 390.0), (888.0, 425.0), (858.0, 460.0), (882.0, 495.0), (855.0, 530.0)],
             density=0.3,
         ),
+        # Climate dressing (geography_reference.md's "Climate" section):
+        # Wodensreich's own north-west corner is the map's single coldest
+        # point -- its highest peaks, snow-capped rather than bare.
+        "wodensreich_nw_peaks": MountainRange(
+            kind="ridge",
+            points=[(210.0, 335.0), (235.0, 365.0), (205.0, 395.0), (240.0, 415.0)],
+            density=0.7,
+        ),
     },
     forest_stands=[
         ForestStand((738.0, 428.0), (26.0, 18.0), "conifer", 0.6, 3),
@@ -192,6 +214,9 @@ CONTINENT_CONFIG = MapConfig(
         # exaggerated in size so they stay visible at continent scale.
         WaterBody(center=(824.0, 443.0), radii=(12.0, 9.0)),  # lake near Kasumikyo
         WaterBody(center=(747.0, 486.0), radii=(6.0, 4.5)),  # lake near Kiri no Sato
+        # Climate dressing: a frozen lake in Wodensreich's own coldest corner
+        # (pale ice-blue fill instead of the ordinary water color).
+        WaterBody(center=(270.0, 410.0), radii=(13.0, 9.0), fill="#d8eef5"),
     ],
     places={
         "Eisenhort": Place(320.0, 420.0, tier="capital"),
@@ -228,8 +253,62 @@ CONTINENT_CONFIG = MapConfig(
              (1000.0, 380.0), (1050.0, 400.0), (1180.0, 410.0), (1270.0, 420.0)],
             kind="trail",
         ),
+        # Rivers, one per kingdom. Okiri's two are not invented -- they're a
+        # simplified port of the local map's own RIVER and TRIBUTARY point
+        # arrays (valley/mapgen.py), transformed by the same ~0.167 scale and
+        # Basin(500,350)->ring-center(780,460) anchor as the lakes/basin ring/
+        # Kasumikyo above, not a fresh design. Fewer points than the local
+        # originals (10 and 7) since the ring is tiny at continent scale, but
+        # the course shape and endpoints match: the main river still runs
+        # north-to-southwest and dies out near the ring's inner west edge,
+        # by the lake near Kiri no Sato; the tributary still emerges near the
+        # lake by Kasumikyo on the east side and runs south.
+        # Both continue past the ring's mouth/gaps to the coast (checked
+        # against the landmass polygon, same as the other three kingdoms'
+        # rivers below) -- the local map only ever drew the portion inside
+        # the valley itself, it was never meant to end there.
+        "okiri_river": Route(
+            [(777.0, 416.0), (765.0, 455.0), (747.0, 478.0), (741.0, 486.0), (724.0, 500.0),
+             (712.0, 545.0), (695.0, 590.0), (675.0, 625.0), (665.0, 640.0)],
+            kind="river",
+        ),
+        "okiri_tributary": Route(
+            [(838.0, 441.0), (826.0, 470.0), (812.0, 490.0), (804.0, 501.0),
+             (797.0, 535.0), (792.0, 575.0), (787.0, 615.0), (785.0, 656.0)],
+            kind="river",
+        ),
+        # Wodensreich: a Rhine/Volga-like river out of the cold north-west,
+        # feeding industry down past Eisenhort (matches the "coal-like solid
+        # mana, industrial" coding, design.md's "Sleeping Gods"/"Donarsblut").
+        # Source and mouth both checked against the landmass polygon's own
+        # coastline so the river starts on land (not in the ocean band) and
+        # ends exactly at the shore (not short of it, not past it).
+        "wodensreich_river": Route(
+            [(260.0, 310.0), (280.0, 330.0), (310.0, 390.0), (320.0, 420.0),
+             (360.0, 480.0), (420.0, 540.0), (460.0, 585.0), (478.0, 641.0)],
+            kind="river",
+        ),
+        # The Tumen: one broad, slow steppe river cutting north-south through
+        # open plains (Volga/Amu Darya-coded) -- grazing land the tribes
+        # pass through, not a settlement spine (geography_reference's
+        # doctrine note: no shaping nature, no dense riverside towns).
+        "tumen_river": Route(
+            [(1025.0, 308.0), (1040.0, 350.0), (1030.0, 430.0), (1060.0, 510.0),
+             (1050.0, 590.0), (1065.0, 635.0)],
+            kind="river",
+        ),
+        # Devran: a Nile/Tigris-Euphrates-style river sustaining Sarayonu out
+        # of the desert -- oil is Devran's mana, not its water.
+        "devran_river": Route(
+            [(1185.0, 296.0), (1220.0, 340.0), (1250.0, 390.0), (1270.0, 420.0),
+             (1290.0, 470.0), (1310.0, 530.0), (1300.0, 595.0), (1300.0, 624.0)],
+            kind="river",
+        ),
     },
     ships=[(500.0, 150.0), (900.0, 180.0), (700.0, 780.0), (1100.0, 750.0)],
+    # Wodensreich's south-west: volcanic peaks, deliberate contrast to the
+    # frozen lake and tundra in its north-west (same kingdom, two extremes).
+    volcanoes=[(240.0, 580.0), (295.0, 600.0)],
     legend_entries=[
         ("capital", "Capital"),
         ("city", "City / Town"),
@@ -239,6 +318,7 @@ CONTINENT_CONFIG = MapConfig(
         ("desert", "Desert"),
         ("road", "Road"),
         ("trail", "Trail / Trade Route"),
+        ("river", "River"),
     ],
     palette=CONTINENT_PALETTE,
     decor=Decor(border=True, compass=True, scale=True, cartouche=True, paper_texture=True),

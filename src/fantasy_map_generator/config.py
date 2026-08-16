@@ -115,6 +115,11 @@ class BiomeRegion:
     # as the anchor for this region's own small subtitle label.
     left_border: list[tuple[float, float]] | None = None
     right_border: list[tuple[float, float]] | None = None
+    # When True (and left_border/right_border are unset), this region's
+    # ellipse is clipped against the actual landmass coastline instead of
+    # drawn as a freestanding ellipse -- for corner/local dressing (a frost
+    # tint, a hot-sand tint) that shouldn't spill out over the ocean.
+    clip_to_land: bool = False
     id: str = ""
 
 
@@ -174,6 +179,7 @@ class WaterBody:
 
     center: tuple[float, float]
     radii: tuple[float, float]
+    fill: str | None = None
     id: str = ""
 
 
@@ -286,6 +292,7 @@ class MapConfig:
     # same as every other manually-authored map element here) and a legend
     # box (kind, label) pairs; both render only if non-empty.
     ships: list[tuple[float, float]] = field(default_factory=list)
+    volcanoes: list[tuple[float, float]] = field(default_factory=list)
     legend_entries: list[tuple[str, str]] = field(default_factory=list)
     legend_pos: tuple[float, float] | None = None
 
@@ -380,6 +387,7 @@ class MapConfig:
                         fill=b.fill,
                         left_border=[(float(x), float(y)) for x, y in b.left_border] if b.left_border else None,
                         right_border=[(float(x), float(y)) for x, y in b.right_border] if b.right_border else None,
+                        clip_to_land=b.clip_to_land,
                         id=b.id or f"biome_{i}",
                     )
                 )
@@ -444,6 +452,7 @@ class MapConfig:
                     WaterBody(
                         center=(float(w.center[0]), float(w.center[1])),
                         radii=(float(w.radii[0]), float(w.radii[1])),
+                        fill=w.fill,
                         id=w.id or f"lake_{i}",
                     )
                 )
@@ -480,6 +489,7 @@ class MapConfig:
             routes=routes,
             locations={p.name: p.pos for p in places.values()},
             ships=[(float(x), float(y)) for x, y in self.ships],
+            volcanoes=[(float(x), float(y)) for x, y in self.volcanoes],
             legend_entries=list(self.legend_entries),
             legend_pos=self.legend_pos,
             palette=self.palette,
