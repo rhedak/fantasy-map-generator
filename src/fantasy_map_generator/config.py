@@ -25,7 +25,7 @@ Biome = Literal["forest", "desert", "swamp", "ice", "plain", "coast", "tundra"]
 TreeStyle = Literal["triangle", "conifer", "canopy", "stamp"]
 MountainKind = Literal["ring", "ridge", "stacked", "single"]
 RouteKind = Literal["road", "trail", "river", "ferry"]
-PlaceTier = Literal["hamlet", "village", "town", "city", "capital", "ruin", "castle"]
+PlaceTier = Literal["hamlet", "village", "town", "city", "capital", "ruin", "castle", "camp"]
 
 PLACE_TIERS: tuple[PlaceTier, ...] = (
     "hamlet",
@@ -35,6 +35,10 @@ PLACE_TIERS: tuple[PlaceTier, ...] = (
     "capital",
     "ruin",
     "castle",
+    # A tent glyph rather than a building -- for a temporary/nomadic
+    # settlement, not a smaller permanent one (see the Tumen's own doctrine
+    # against shaping/settling the land, design.md's "Other powers").
+    "camp",
 )
 
 
@@ -293,6 +297,12 @@ class MapConfig:
     # box (kind, label) pairs; both render only if non-empty.
     ships: list[tuple[float, float]] = field(default_factory=list)
     volcanoes: list[tuple[float, float]] = field(default_factory=list)
+    # Sleeping Gods sacred-site landmarks (design.md's "Sleeping Gods"): each
+    # a (x, y, kind) tuple, kind one of "temple" (a still-standing built
+    # monument) or "kurgan" (an unbuilt natural site -- mound and standing
+    # stones, no structure, for a culture whose doctrine forbids building
+    # one, e.g. the Tumen).
+    sacred_sites: list[tuple[float, float, str]] = field(default_factory=list)
     legend_entries: list[tuple[str, str]] = field(default_factory=list)
     legend_pos: tuple[float, float] | None = None
 
@@ -490,6 +500,7 @@ class MapConfig:
             locations={p.name: p.pos for p in places.values()},
             ships=[(float(x), float(y)) for x, y in self.ships],
             volcanoes=[(float(x), float(y)) for x, y in self.volcanoes],
+            sacred_sites=[(float(x), float(y), str(k)) for x, y, k in self.sacred_sites],
             legend_entries=list(self.legend_entries),
             legend_pos=self.legend_pos,
             palette=self.palette,

@@ -220,6 +220,19 @@ CONTINENT_CONFIG = MapConfig(
     ],
     places={
         "Eisenhort": Place(320.0, 420.0, tier="capital"),
+        # Settlement density, later session ("lived in" pass): Wodensreich
+        # and Devran are industrial, city-shaping cultures and should read
+        # denser than the Tumen's deliberate sparseness (design.md's
+        # "Sleeping Gods"/doctrine notes). A coal-mining town near the
+        # north-west peaks, and a river town further south along the same
+        # river.
+        "Grubenfeld": Place(355.0, 345.0, tier="town"),
+        "Kohlbrücke": Place(430.0, 545.0, tier="village"),
+        # A disused Woden shrine near the capital -- "ruin" tier's broken-
+        # walls icon already reads as exactly the "forgot the charge, went
+        # industrial" note in design.md's "Sleeping Gods" section; no new
+        # icon needed, unlike Devran's and the Tumen's own sites below.
+        "Wodenhalle": Place(280.0, 460.0, tier="ruin"),
         # Ported from the local map's outer-district coordinate (same 0.167
         # scale/anchor as the ring and lakes above), inside the Basin ring's
         # own gap-facing side.
@@ -232,11 +245,25 @@ CONTINENT_CONFIG = MapConfig(
         # East of the ring, through the broken eastern hills, still Okiri --
         # working name pending author sign-off, same as Devran's capital.
         "Higashimura": Place(900.0, 475.0, tier="hamlet"),
+        # The Tumen: kept deliberately sparse, per their own doctrine against
+        # shaping the land (design.md's "Other powers"/"Sleeping Gods").
+        # Boru-Khal stays a real trade-post village (a permanent exception,
+        # not a contradiction -- some tribes trade, not all are purely
+        # nomadic); Altan-Oyun and the new camp use the "camp" tier (a tent
+        # glyph, not a building) to read as temporary rather than a smaller
+        # permanent village.
         "Boru-Khal": Place(1000.0, 380.0, tier="village"),
-        "Altan-Oyun": Place(1100.0, 480.0, tier="hamlet"),
+        "Altan-Oyun": Place(1100.0, 480.0, tier="camp"),
+        "Sarangerel's Camp": Place(1065.0, 525.0, tier="camp"),
         "Sarayonu": Place(1270.0, 420.0, tier="capital"),
         "Kizil Keep": Place(1360.0, 380.0, tier="castle"),
-        "Shirin's Landing": Place(1220.0, 560.0, tier="city"),
+        # Renamed from "Shirin's Landing" (later session): read too much like
+        # a Game of Thrones place name. "Bandar-e-Shirin" ("Port of Shirin",
+        # Persian) keeps the name but fits Devran's Ottoman-Persian coding.
+        "Bandar-e-Shirin": Place(1220.0, 560.0, tier="city"),
+        # A small oasis town at the Devran river's own source, out of the
+        # desert (matches its Nile/Tigris-Euphrates coding).
+        "Yeşilvaha": Place(1195.0, 305.0, tier="village"),
     },
     routes={
         # The Wodensreich's own "eastern trade roads" (Ch26:17-18): maintained
@@ -252,6 +279,21 @@ CONTINENT_CONFIG = MapConfig(
             [(803.0, 471.0), (855.0, 470.0), (900.0, 475.0), (960.0, 440.0),
              (1000.0, 380.0), (1050.0, 400.0), (1180.0, 410.0), (1270.0, 420.0)],
             kind="trail",
+        ),
+        # Trade-route texture, later session ("lived in" pass): spurs
+        # connecting the settlements added in the density pass, plus
+        # Devran's own capital-to-coast connections that had no road at all
+        # before. Wodenhalle and the Tumen's camps are deliberately left
+        # unconnected -- a disused shrine draws no traffic, and a road to a
+        # nomad camp would itself violate the Tumen's doctrine.
+        "wodensreich_nw_spur": Route([(320.0, 420.0), (355.0, 345.0)], kind="road"),
+        "wodensreich_river_spur": Route([(320.0, 420.0), (430.0, 545.0)], kind="road"),
+        "devran_oasis_spur": Route([(1270.0, 420.0), (1195.0, 305.0)], kind="road"),
+        "devran_coastal_road": Route(
+            [(1270.0, 420.0), (1360.0, 380.0)], kind="road",
+        ),
+        "devran_south_road": Route(
+            [(1270.0, 420.0), (1220.0, 560.0)], kind="road",
         ),
         # Rivers, one per kingdom. Okiri's two are not invented -- they're a
         # simplified port of the local map's own RIVER and TRIBUTARY point
@@ -305,14 +347,32 @@ CONTINENT_CONFIG = MapConfig(
             kind="river",
         ),
     },
-    ships=[(500.0, 150.0), (900.0, 180.0), (700.0, 780.0), (1100.0, 750.0)],
+    # Wodensreich and Devran get extra ships along their own coasts
+    # specifically (industrial, naval-trade powers); Okiri's and the Tumen's
+    # coastlines stay comparatively quiet.
+    ships=[
+        (500.0, 150.0), (900.0, 180.0), (700.0, 780.0), (1100.0, 750.0),
+        (280.0, 250.0), (200.0, 680.0), (1400.0, 250.0), (1350.0, 680.0),
+    ],
     # Wodensreich's south-west: volcanic peaks, deliberate contrast to the
     # frozen lake and tundra in its north-west (same kingdom, two extremes).
     volcanoes=[(240.0, 580.0), (295.0, 600.0)],
+    # Sleeping Gods sacred sites (design.md's "Sleeping Gods"). Wodenhalle
+    # (above, "ruin" tier) covers Wodensreich; Okiri needs none, already
+    # fully covered by the ring/Basin/Kasumikyo detail.
+    sacred_sites=[
+        # The Great Dev's temple, still standing near the capital -- heritage
+        # rather than living faith, but never abandoned or ruined.
+        (1300.0, 450.0, "temple"),
+        # An unbuilt Tumen sacred site: a mound and standing stones, open
+        # plains, no structure -- their doctrine forbids building one.
+        (1085.0, 610.0, "kurgan"),
+    ],
     legend_entries=[
         ("capital", "Capital"),
         ("city", "City / Town"),
         ("village", "Village"),
+        ("camp", "Nomad Camp"),
         ("mountain", "Mountains"),
         ("forest", "Forest"),
         ("desert", "Desert"),

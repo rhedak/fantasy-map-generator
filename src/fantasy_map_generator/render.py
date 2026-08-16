@@ -847,6 +847,19 @@ def _place_icon(
         out.extend(
             _settlement_buildings(rng, x, y, palette.settlement, palette.settlement_roof, 0.75, 2)
         )
+    elif tier == "camp":
+        # A tent, not a building -- deliberately distinct from "hamlet"
+        # (see PlaceTier's own comment): a temporary/nomadic site reads
+        # differently even at the smallest permanent-settlement scale.
+        out.append(
+            _polygon(
+                [(x - 5, y + 4), (x, y - 5), (x + 5, y + 4)],
+                fill=palette.settlement,
+                stroke=palette.ink,
+                sw=0.8,
+            )
+        )
+        out.append(_path([(x, y - 5), (x, y + 4)], stroke=palette.ink, sw=0.6, opacity=0.6))
     else:  # village
         out.append(_circle(x, y, 3.2, fill=palette.settlement, stroke=palette.ink, sw=0.7))
         out.extend(
@@ -948,6 +961,7 @@ _LEGEND_GLYPHS: dict[str, str] = {
     "hamlet": "village",
     "castle": "capital",
     "ruin": "village",
+    "camp": "camp",
     "road": "road",
     "trail": "trail",
     "river": "river",
@@ -972,6 +986,8 @@ def _legend_glyph(kind: str, cx: float, cy: float, palette: Palette) -> list[str
     if kind in {"capital", "city", "town", "village"}:
         r = {"capital": 4.0, "city": 3.2, "town": 2.6, "village": 2.0}[kind]
         return [_circle(cx, cy, r, fill=palette.settlement, stroke=palette.ink, sw=0.6)]
+    if kind == "camp":
+        return [_polygon([(cx, cy - 4), (cx - 4, cy + 4), (cx + 4, cy + 4)], fill=palette.settlement, stroke=palette.ink, sw=0.6)]
     if kind in {"road", "trail"}:
         dash = ' stroke-dasharray="2 3"' if kind == "trail" else ""
         return [f'<line x1="{cx - 6:.1f}" y1="{cy:.1f}" x2="{cx + 6:.1f}" y2="{cy:.1f}" stroke="{palette.road}" stroke-width="1.6"{dash}/>']
@@ -1040,6 +1056,29 @@ def _decor_volcano(cx: float, cy: float, scale: float = 1.0) -> list[str]:
         opacity=0.35,
     )
     return [smoke, glow, cone, crater]
+
+
+def _decor_sacred_site(cx: float, cy: float, kind: str, palette: Palette) -> list[str]:
+    """A Sleeping Gods landmark (see MapConfig.sacred_sites). "temple" is a
+    small stepped/stacked stone monument, still standing; "kurgan" is an
+    unbuilt mound ringed by standing stones -- deliberately not a structure,
+    for a culture whose doctrine forbids building one (e.g. the Tumen)."""
+    if kind == "kurgan":
+        out = [_ellipse_fill(cx, cy, 10.0, 6.0, fill=palette.road_dim, opacity=0.5)]
+        for i in range(6):
+            a = math.tau * i / 6
+            sx, sy = cx + math.cos(a) * 13.0, cy + math.sin(a) * 7.0
+            out.append(_line(sx, sy - 3.5, sx, sy + 1.5, stroke=palette.ink, sw=1.4, opacity=0.8))
+        return out
+    # "temple": three stacked, narrowing stone tiers plus a small central spire.
+    tiers = [(16.0, 4.0), (11.0, 4.0), (6.0, 4.0)]
+    out = []
+    y = cy + 6.0
+    for w, h in tiers:
+        out.append(_rect(cx - w / 2, y - h, w, h, fill=palette.old_wall, stroke=palette.ink, sw=0.7))
+        y -= h
+    out.append(_line(cx, y, cx, y - 7.0, stroke=palette.gold, sw=1.6))
+    return out
 
 
 # --- Pipeline ---------------------------------------------------------------
@@ -1359,6 +1398,10 @@ def render_map(
     # Volcanoes (hand-placed, see MapConfig.volcanoes)
     for vx, vy in cfg.volcanoes:
         layers.extend(_decor_volcano(vx, vy))
+
+    # Sleeping Gods sacred sites (hand-placed, see MapConfig.sacred_sites)
+    for sx, sy, skind in cfg.sacred_sites:
+        layers.extend(_decor_sacred_site(sx, sy, skind, palette))
 
     # Forests
     stands = list(cfg.forest_stands)
