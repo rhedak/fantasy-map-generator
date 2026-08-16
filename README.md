@@ -87,6 +87,28 @@ Local preview of the exact deployed layout:
 - **Optional PNG:** Export via cairosvg (best-effort).
 - **Interactive GUI:** Gallery, seed control, preview, download.
 
+## Map Gallery
+
+Every world in `WORLDS`, rendered at the CLI's default seed (7) and checked
+into `ref-out/` (same pattern as `../anime-character-creator`'s own
+`ref-out/` — the only generated output under version control, kept current
+with the code rather than a stale snapshot).
+
+| | |
+|---|---|
+| <img src="ref-out/continent.png" width="380" alt="Continent"><br>`continent` — the wider world around the Valley of Mists | <img src="ref-out/valley.png" width="380" alt="Valley"><br>`valley` — the Valley of Mists itself, story-canonical |
+| <img src="ref-out/desert.png" width="380" alt="Desert"><br>`desert` — arid corridor, dunes and oases | <img src="ref-out/tropical.png" width="380" alt="Tropical"><br>`tropical` — archipelago, multi-island |
+| <img src="ref-out/arctic.png" width="380" alt="Arctic"><br>`arctic` — ice coast / fjord | <img src="ref-out/autumn.png" width="380" alt="Autumn"><br>`autumn` — inland kingdom, forest stands |
+| <img src="ref-out/inkwell.png" width="380" alt="Inkwell"><br>`inkwell` — sketch/ink style kit | |
+
+Each also lives as a `.svg` alongside its `.png` in `ref-out/`. Regenerate
+the whole gallery after any world/render change:
+
+```bash
+./refresh-ref-out.sh          # re-render every world, report what moved
+./refresh-ref-out.sh --check  # compare only, write nothing, exit 1 if stale
+```
+
 ## Architecture
 
 **Core components:**
@@ -102,10 +124,12 @@ Local preview of the exact deployed layout:
 | id | Archetype | Notes |
 |----|-----------|--------|
 | `valley` | Mist bowl | Story locations, ring peaks, cool mist |
+| `continent` | Wide island strip | Four political territories, meandering borders, rivers, Sleeping Gods landmarks |
 | `desert` | Arid corridor | Broken ridge, dunes, oases, parchment decor |
 | `tropical` | Archipelago | Sea + waves, multi-island, stacked peaks |
 | `arctic` | Ice coast / fjord | Ice shelf polygon, cold sea, sparse conifers |
 | `autumn` | Inland kingdom | Forest stands, edge range, cartouche/border |
+| `inkwell` | Sketch | Ink/watercolor style kit |
 
 CLI knobs: `--detail 0-1`, `--coast-roughness 0-1`. GUI exposes the same + shareable URL params.
 
