@@ -75,6 +75,19 @@ def test_all_world_presets_render():
         assert config.name.split()[0] in svg or config.name in svg, world_id
 
 
+def test_to_dict_from_dict_round_trip_preserves_all_fields():
+    """to_dict() is generic (walks dataclass fields), but from_dict() is
+    hand-written and has twice now silently dropped newly-added fields
+    (region_labels/lakes/ships/volcanoes/sacred_sites/legend/BiomeRegion's
+    fill+border+clip_to_land). The GUI round-trips every render through
+    to_dict->from_dict (bridge.py's _resolve_config), so a dropped field
+    here is a live bug, not just a serialization nicety."""
+    for world_id, config in WORLDS.items():
+        first = config.to_dict()
+        second = MapConfig.from_dict(first).to_dict()
+        assert first == second, f"{world_id}: MapConfig.from_dict lost fields on round-trip"
+
+
 def test_presets_distinct_silhouette():
     """Worlds should not be mere palette swaps — layout markers differ."""
     markers = {}

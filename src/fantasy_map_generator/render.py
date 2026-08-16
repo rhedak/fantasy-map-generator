@@ -425,7 +425,6 @@ def _mountains_ring(
     rx, ry = radii  # the ring's footprint -- always literal, independent of `size`
     peak_scale = size / 50.0  # scales only the peak glyphs (height + base width), not the footprint
     n = max(8, int(num_peaks * density))
-    rot_rad = math.radians(rotation)
     for i in range(n):
         a_deg = 360.0 * i / n + rotation
         if mouth_start_deg <= a_deg <= mouth_end_deg:
@@ -1252,6 +1251,7 @@ def render_map(
 
     # Biomes
     for region in cfg.biome_regions:
+        region_elems: list[str] = []
         color = region.fill or _biome_color(palette, region.biome)
         if (region.left_border or region.right_border) and land_polys:
             territory = land_polys[0]
@@ -1260,16 +1260,16 @@ def render_map(
             if territory and region.right_border:
                 territory = _clip_polygon_by_border(territory, region.right_border, keep_right=False)
             if len(territory) >= 3:
-                layers.append(_polygon(territory, fill=color, opacity=0.92))
+                region_elems.append(_polygon(territory, fill=color, opacity=0.92))
         elif region.clip_to_land and land_polys:
             ellipse_poly = _ellipse_polygon(region.center, region.radii)
             clipped = _clip_polygon_convex(land_polys[0], ellipse_poly)
             if len(clipped) >= 3:
-                layers.append(
+                region_elems.append(
                     _polygon(clipped, fill=color, opacity=0.22 + 0.25 * region.density)
                 )
         else:
-            layers.append(
+            region_elems.append(
                 _ellipse_fill(
                     region.center[0],
                     region.center[1],
@@ -1280,11 +1280,11 @@ def render_map(
                 )
             )
         if region.biome == "desert":
-            layers.extend(
+            region_elems.extend(
                 _dune_hatch(rng, region.center, region.radii, palette.road_dim, region.density)
             )
         elif region.biome == "swamp":
-            layers.extend(
+            region_elems.extend(
                 _swamp_stipple(rng, region.center, region.radii, palette.swamp, region.density)
             )
         elif region.biome == "ice":
@@ -1293,7 +1293,7 @@ def render_map(
             rx, ry = region.radii
             for i in range(int(8 * region.density)):
                 y = cy - ry + (2 * ry) * (i + 1) / (8 * region.density + 1)
-                layers.append(
+                region_elems.append(
                     _path(
                         [(cx - rx * 0.8, y), (cx + rx * 0.8, y + rng.uniform(-3, 3))],
                         stroke=palette.mist_wall,
@@ -1301,10 +1301,26 @@ def render_map(
                         opacity=0.3,
                     )
                 )
+        if selected_id and selected_id == region.id:
+            region_elems.append(
+                _ellipse_fill(
+                    region.center[0], region.center[1], region.radii[0] + 6, region.radii[1] + 6,
+                    fill="none", stroke="#ffcc33", sw=2.2, opacity=0.75,
+                )
+            )
+        layers.append(_group(region_elems, data_id=region.id, data_kind="biome"))
 
     # Lakes (standalone inland water bodies, see WaterBody)
     for lake in cfg.lakes:
-        layers.append(_lake(lake, palette))
+        lake_elems = [_lake(lake, palette)]
+        if selected_id and selected_id == lake.id:
+            lake_elems.append(
+                _ellipse_fill(
+                    lake.center[0], lake.center[1], lake.radii[0] + 6, lake.radii[1] + 6,
+                    fill="none", stroke="#ffcc33", sw=2.0, opacity=0.75,
+                )
+            )
+        layers.append(_group(lake_elems, data_id=lake.id, data_kind="lake"))
 
     # Mountains
     mountain_ranges = dict(cfg.mountain_ranges)
@@ -1395,13 +1411,24 @@ def render_map(
                 )
         layers.append(_group(elems, data_id=mrid, data_kind="mountain"))
 
-    # Volcanoes (hand-placed, see MapConfig.volcanoes)
-    for vx, vy in cfg.volcanoes:
-        layers.extend(_decor_volcano(vx, vy))
+    # Volcanoes (hand-placed, see MapConfig.volcanoes). No stable id on a
+    # plain (x, y) tuple, so index-based ids (same approach as ships/sacred
+    # sites below) -- fine as long as edits go through the list, not a
+    # reordering, same caveat as any index-keyed collection.
+    for i, (vx, vy) in enumerate(cfg.volcanoes):
+        vid = f"volcano_{i}"
+        elems = _decor_volcano(vx, vy)
+        if selected_id and selected_id == vid:
+            elems.append(_circle(vx, vy - 10, 22, fill="none", stroke="#ffcc33", sw=2.0, opacity=0.75))
+        layers.append(_group(elems, data_id=vid, data_kind="volcano"))
 
     # Sleeping Gods sacred sites (hand-placed, see MapConfig.sacred_sites)
-    for sx, sy, skind in cfg.sacred_sites:
-        layers.extend(_decor_sacred_site(sx, sy, skind, palette))
+    for i, (sx, sy, skind) in enumerate(cfg.sacred_sites):
+        said = f"sacred_{i}"
+        elems = _decor_sacred_site(sx, sy, skind, palette)
+        if selected_id and selected_id == said:
+            elems.append(_circle(sx, sy, 18, fill="none", stroke="#ffcc33", sw=2.0, opacity=0.75))
+        layers.append(_group(elems, data_id=said, data_kind="sacred_site"))
 
     # Forests
     stands = list(cfg.forest_stands)
@@ -1492,11 +1519,23 @@ def render_map(
 
     # Kingdom/political region labels (large, distinct from the biome labels above)
     for region_label in cfg.region_labels:
-        layers.append(_region_label(region_label, palette))
+        elems = [_region_label(region_label, palette)]
+        if selected_id and selected_id == region_label.id:
+            cx, cy = region_label.center
+            elems.append(
+                _rect(cx - 90, cy - region_label.font_size, 180, region_label.font_size * 1.4,
+                      fill="none", stroke="#ffcc33", sw=1.6, opacity=0.75)
+            )
+        layers.append(_group(elems, data_id=region_label.id, data_kind="region_label"))
 
-    # Ships (hand-placed, see MapConfig.ships)
-    for sx, sy in cfg.ships:
-        layers.extend(_decor_ship(sx, sy, palette))
+    # Ships (hand-placed, see MapConfig.ships). Index-based ids, see the
+    # volcano comment above for the same caveat.
+    for i, (sx, sy) in enumerate(cfg.ships):
+        shid = f"ship_{i}"
+        elems = _decor_ship(sx, sy, palette)
+        if selected_id and selected_id == shid:
+            elems.append(_circle(sx, sy, 16, fill="none", stroke="#ffcc33", sw=2.0, opacity=0.75))
+        layers.append(_group(elems, data_id=shid, data_kind="ship"))
 
     # Title / cartouche
     if cfg.decor.cartouche:

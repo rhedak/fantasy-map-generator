@@ -4,108 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Fantasy Map Generator</title>
-  <style>
-    :root {
-      --primary: #4a6fa5;
-      --primary-light: #6a8fc5;
-      --bg: #f0f2f5;
-      --text: #222;
-      --border: #d0d5dd;
-      --panel: #fff;
-      --accent: #c9a227;
-      --danger: #c62828;
-    }
-    * { box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      margin: 0; padding: 16px; background: var(--bg); color: var(--text);
-    }
-    .page-header { max-width: 1400px; margin: 0 auto 20px; text-align: center; }
-    .page-header h1 { margin: 0 0 6px; color: var(--primary); font-size: 1.8em; }
-    .page-header p { margin: 4px 0; color: #666; }
-    main { max-width: 1400px; margin: 0 auto; }
-    #status {
-      padding: 10px 12px; border-radius: 4px; margin-bottom: 12px; display: none;
-      background: #e8f5e9; border-left: 4px solid #4caf50;
-    }
-    #status.visible { display: block; }
-    #status.error { background: #ffebee; border-left-color: var(--danger); color: var(--danger); }
-    #gallery-section h2 { color: var(--primary); margin-top: 0; }
-    .gallery {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px;
-    }
-    .gallery-card {
-      background: var(--panel); border: 2px solid var(--border); border-radius: 8px;
-      overflow: hidden; cursor: pointer; transition: 0.15s;
-    }
-    .gallery-card:hover { border-color: var(--primary); transform: translateY(-2px); }
-    .gallery-preview { aspect-ratio: 10/7; background: #eee; overflow: hidden; }
-    .gallery-preview svg { width: 100%; height: 100%; }
-    .gallery-card h3 { margin: 10px 12px; color: var(--primary); font-size: 0.95em; }
-    #editor-section { display: none; }
-    #editor-section.visible {
-      display: grid; grid-template-columns: 1fr 340px; gap: 20px;
-    }
-    .preview-pane {
-      background: var(--panel); border-radius: 8px; padding: 14px;
-      box-shadow: 0 1px 4px rgba(0,0,0,.06);
-    }
-    .preview-wrap {
-      position: relative; width: 100%; aspect-ratio: 10/7;
-      border: 1px solid var(--border); border-radius: 4px; overflow: hidden;
-      background: #111; touch-action: none;
-    }
-    .preview-wrap.select-mode { cursor: default; }
-    .preview-wrap.place-mode { cursor: crosshair; }
-    #preview { width: 100%; height: 100%; }
-    #preview svg { width: 100%; height: 100%; display: block; }
-    .ghost {
-      position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px;
-      border: 2px solid #ffcc33; border-radius: 50%; pointer-events: none;
-      display: none; box-shadow: 0 0 0 1px #000;
-    }
-    .preview-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
-    button, .file-btn {
-      padding: 8px 14px; border: 1px solid var(--border); background: #fff;
-      color: var(--primary); border-radius: 4px; cursor: pointer; font-size: 0.92em;
-    }
-    button:hover, .file-btn:hover { background: var(--primary); color: #fff; }
-    button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
-    button.danger { color: var(--danger); }
-    button.danger:hover { background: var(--danger); color: #fff; }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    .link-button { background: none; border: none; color: var(--primary); text-decoration: underline; }
-    .controls-pane { display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 80px); overflow: auto; }
-    fieldset {
-      border: 1px solid var(--border); border-radius: 6px; padding: 12px;
-      background: var(--panel); margin: 0;
-    }
-    legend { padding: 0 6px; color: var(--primary); font-weight: 600; font-size: 0.9em; }
-    .control-group { margin-bottom: 10px; }
-    .control-group:last-child { margin-bottom: 0; }
-    .control-group label { display: block; margin-bottom: 4px; font-size: 0.88em; font-weight: 500; }
-    .control-group input[type="range"] { width: 100%; }
-    .control-group input[type="text"], .control-group select {
-      width: 100%; padding: 6px 8px; border: 1px solid var(--border); border-radius: 4px;
-    }
-    .control-value { text-align: right; font-size: 0.8em; color: #666; }
-    .mode-row, .palette { display: flex; flex-wrap: wrap; gap: 6px; }
-    .palette button { flex: 1 1 40%; font-size: 0.82em; padding: 7px 6px; }
-    .color-grid { display: flex; flex-direction: column; gap: 5px; }
-    .color-row { display: flex; align-items: center; gap: 8px; }
-    .color-row label { flex: 1; font-size: 0.82em; color: #ccc; }
-    .color-row input[type="color"] {
-      width: 44px; height: 26px; padding: 0; border: 1px solid var(--border);
-      border-radius: 4px; background: none; cursor: pointer;
-    }
-    .hint { font-size: 0.82em; color: #666; margin: 8px 0 0; line-height: 1.4; }
-    .copy-status { font-size: 0.85em; color: #4caf50; }
-    .inspector-empty { color: #888; font-size: 0.9em; margin: 0; }
-    .row-btns { display: flex; flex-wrap: wrap; gap: 6px; }
-    @media (max-width: 900px) {
-      #editor-section.visible { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="page-header">
@@ -206,6 +105,25 @@
           <p class="hint" id="mountain-hint">Choose a type, then draw on the map.</p>
         </fieldset>
         <fieldset>
+          <legend>Landmarks</legend>
+          <div class="mode-row">
+            <button id="mode-region">Region</button>
+            <button id="mode-label">Region Label</button>
+            <button id="mode-lake">Lake</button>
+            <button id="mode-ship">Ship</button>
+            <button id="mode-volcano">Volcano</button>
+          </div>
+          <div class="control-group">
+            <label for="sacred-kind">Sacred site kind</label>
+            <select id="sacred-kind">
+              <option value="temple">Temple (built)</option>
+              <option value="kurgan">Kurgan (unbuilt)</option>
+            </select>
+          </div>
+          <button id="mode-sacred">Sacred Site</button>
+          <p class="hint" id="landmark-hint">Choose a landmark, then click the map to drop it.</p>
+        </fieldset>
+        <fieldset>
           <legend>Properties</legend>
           <div id="inspector-empty" class="inspector-empty">Nothing selected</div>
           <div id="inspector-title" style="display:none">
@@ -292,1094 +210,101 @@
               <button id="delete-mountain" class="danger">Delete mountain</button>
             </div>
           </div>
+          <div id="inspector-biome" style="display:none">
+            <div class="control-group">
+              <label for="prop-biome-name">Name</label>
+              <input id="prop-biome-name" type="text" placeholder="(subtitle, optional)">
+            </div>
+            <div class="control-group">
+              <label for="prop-biome-type">Biome</label>
+              <select id="prop-biome-type">
+                <option value="plain">plain</option>
+                <option value="forest">forest</option>
+                <option value="desert">desert</option>
+                <option value="swamp">swamp</option>
+                <option value="ice">ice</option>
+                <option value="coast">coast</option>
+                <option value="tundra">tundra</option>
+              </select>
+            </div>
+            <div class="control-group">
+              <label for="prop-biome-fill">Color override</label>
+              <input id="prop-biome-fill" type="color">
+              <button id="prop-biome-fill-clear" class="link-button" type="button">Use biome default</button>
+            </div>
+            <div class="control-group">
+              <label for="prop-biome-density">Density</label>
+              <input id="prop-biome-density" type="range" min="0" max="1" step="0.05">
+              <span class="control-value" id="biome-density-val">0.5</span>
+            </div>
+            <p class="hint">Political territories (kingdom-shaped, following the coastline) are set up by hand in code, not drawn here — this creates a freestanding tint ellipse.</p>
+            <div class="row-btns" style="margin-top:8px">
+              <button id="delete-biome" class="danger">Delete region</button>
+            </div>
+          </div>
+          <div id="inspector-region-label" style="display:none">
+            <div class="control-group">
+              <label for="prop-label-name">Text</label>
+              <input id="prop-label-name" type="text">
+            </div>
+            <div class="control-group">
+              <label for="prop-label-size">Font size</label>
+              <input id="prop-label-size" type="range" min="12" max="60" step="1">
+              <span class="control-value" id="label-size-val">30</span>
+            </div>
+            <div class="row-btns" style="margin-top:8px">
+              <button id="delete-region-label" class="danger">Delete label</button>
+            </div>
+          </div>
+          <div id="inspector-lake" style="display:none">
+            <div class="control-group">
+              <label for="prop-lake-rx">Width (rx)</label>
+              <input id="prop-lake-rx" type="range" min="2" max="120" step="1">
+              <span class="control-value" id="lake-rx-val">20</span>
+            </div>
+            <div class="control-group">
+              <label for="prop-lake-ry">Height (ry)</label>
+              <input id="prop-lake-ry" type="range" min="2" max="120" step="1">
+              <span class="control-value" id="lake-ry-val">15</span>
+            </div>
+            <div class="control-group">
+              <label for="prop-lake-fill">Color override</label>
+              <input id="prop-lake-fill" type="color">
+              <button id="prop-lake-fill-clear" class="link-button" type="button">Use water default</button>
+            </div>
+            <div class="row-btns" style="margin-top:8px">
+              <button id="delete-lake" class="danger">Delete lake</button>
+            </div>
+          </div>
+          <div id="inspector-ship" style="display:none">
+            <p class="hint">A ship glyph. Drag to reposition.</p>
+            <div class="row-btns" style="margin-top:8px">
+              <button id="delete-ship" class="danger">Delete ship</button>
+            </div>
+          </div>
+          <div id="inspector-volcano" style="display:none">
+            <p class="hint">A volcano glyph. Drag to reposition.</p>
+            <div class="row-btns" style="margin-top:8px">
+              <button id="delete-volcano" class="danger">Delete volcano</button>
+            </div>
+          </div>
+          <div id="inspector-sacred-site" style="display:none">
+            <div class="control-group">
+              <label for="prop-sacred-kind">Kind</label>
+              <select id="prop-sacred-kind">
+                <option value="temple">Temple (built)</option>
+                <option value="kurgan">Kurgan (unbuilt)</option>
+              </select>
+            </div>
+            <div class="row-btns" style="margin-top:8px">
+              <button id="delete-sacred-site" class="danger">Delete sacred site</button>
+            </div>
+          </div>
         </fieldset>
       </div>
     </section>
   </main>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
-  <script>
-    const TIERS = ["hamlet","village","town","city","capital","ruin","castle"];
-    const PATH_KINDS = ["road","trail","river","ferry"];
-    const PALETTE_KEYS = [
-      ["background", "Background"],
-      ["land", "Land"],
-      ["mountain", "Mountain"],
-      ["mountain_stroke", "Mountain stroke"],
-      ["water", "Water"],
-      ["water_tributary", "Tributary"],
-      ["water_deep", "Deep water"],
-      ["paddy", "Paddy"],
-      ["forest", "Forest"],
-      ["desert", "Desert"],
-      ["swamp", "Swamp"],
-      ["ice", "Ice"],
-      ["plain", "Plain"],
-      ["coast", "Coast"],
-      ["settlement", "Settlement"],
-      ["settlement_roof", "Roof"],
-      ["road", "Road"],
-      ["road_dim", "Road (dim)"],
-      ["text", "Text"],
-      ["text_dim", "Text (dim)"],
-      ["text_faint", "Text (faint)"],
-      ["mist_wall", "Mist wall"],
-      ["mist_wall_stroke", "Mist wall stroke"],
-      ["passage", "Passage"],
-      ["zone", "Zone"],
-      ["old_wall", "Old wall"],
-      ["palace_roof", "Palace roof"],
-      ["palace_roof_light", "Palace roof light"],
-      ["palace_trim", "Palace trim"],
-      ["ink", "Ink"],
-      ["paper", "Paper"],
-      ["gold", "Gold"],
-    ];
-
-    const statusEl = document.getElementById('status');
-    const galleryEl = document.getElementById('gallery');
-    const gallerySection = document.getElementById('gallery-section');
-    const editorEl = document.getElementById('editor-section');
-    const previewEl = document.getElementById('preview');
-    const previewWrap = document.getElementById('preview-wrap');
-    const ghost = document.getElementById('ghost');
-    const seedSlider = document.getElementById('seed-slider');
-    const seedValue = document.getElementById('seed-value');
-    const detailSlider = document.getElementById('detail-slider');
-    const detailValue = document.getElementById('detail-value');
-    const roughSlider = document.getElementById('rough-slider');
-    const roughValue = document.getElementById('rough-value');
-    const worldName = document.getElementById('world-name');
-    const modeHint = document.getElementById('mode-hint');
-    const paletteEl = document.getElementById('palette');
-    const pathPaletteEl = document.getElementById('path-palette');
-    const propName = document.getElementById('prop-name');
-    const propTier = document.getElementById('prop-tier');
-    const propRouteLabel = document.getElementById('prop-route-label');
-    const propRouteKind = document.getElementById('prop-route-kind');
-    const propMountainKind = document.getElementById('prop-mountain-kind');
-    const propMountainDensity = document.getElementById('prop-mountain-density');
-    const propMountainSize = document.getElementById('prop-mountain-size');
-    const propMountainRotation = document.getElementById('prop-mountain-rotation');
-    const mountainDensityVal = document.getElementById('mountain-density-val');
-    const mountainSizeVal = document.getElementById('mountain-size-val');
-    const mountainRotationVal = document.getElementById('mountain-rotation-val');
-    const mountainSizeGroup = document.getElementById('prop-mountain-size-group');
-    const mountainRotationGroup = document.getElementById('prop-mountain-rotation-group');
-    const routePointsHint = document.getElementById('route-points-hint');
-    const mountainPointsHint = document.getElementById('mountain-points-hint');
-    const inspectorEmpty = document.getElementById('inspector-empty');
-    const inspectorTitle = document.getElementById('inspector-title');
-    const inspectorPlace = document.getElementById('inspector-place');
-    const inspectorRoute = document.getElementById('inspector-route');
-    const inspectorMountain = document.getElementById('inspector-mountain');
-    const propTitle = document.getElementById('prop-title');
-    const propTitleSize = document.getElementById('prop-title-size');
-    const propTitleSizeValue = document.getElementById('prop-title-size-value');
-    const propTitleBold = document.getElementById('prop-title-bold');
-    const propTitleItalic = document.getElementById('prop-title-italic');
-    const undoBtn = document.getElementById('undo-btn');
-    const redoBtn = document.getElementById('redo-btn');
-
-    let presets = [];
-    let currentPreset = null;
-    let workingConfig = null;
-    let selectedId = null;
-    let selectedKind = null; // place | route | mountain
-    let mode = 'select'; // select | place | path | mountain
-    let placeTier = 'village';
-    let pathKind = 'road';
-    let mountainKind = 'ridge';
-    let draftPoints = [];
-    let lastClickTime = 0;
-    let renderTimer = null;
-    let renderSeq = 0;
-    let undoStack = [];
-    let redoStack = [];
-    let dragging = null;
-    let placeCounters = {};
-    let pathCounters = {};
-    let mountainCounters = {};
-
-    TIERS.forEach(t => {
-      const o = document.createElement('option');
-      o.value = t; o.textContent = t;
-      propTier.appendChild(o);
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = t;
-      b.dataset.tier = t;
-      b.addEventListener('click', () => {
-        placeTier = t;
-        draftPoints = [];
-        setMode('place');
-        [...paletteEl.querySelectorAll('button')].forEach(x => x.classList.toggle('active', x.dataset.tier === t));
-        [...pathPaletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
-        modeHint.textContent = `Place: ${t} — click map to drop. Esc for select.`;
-      });
-      paletteEl.appendChild(b);
-    });
-
-    PATH_KINDS.forEach(k => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = k;
-      b.dataset.kind = k;
-      b.addEventListener('click', () => {
-        pathKind = k;
-        draftPoints = [];
-        setMode('path');
-        [...pathPaletteEl.querySelectorAll('button')].forEach(x => x.classList.toggle('active', x.dataset.kind === k));
-        [...paletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
-        modeHint.textContent = `Draw ${k}: click waypoints, double-click or Enter to finish.`;
-      });
-      pathPaletteEl.appendChild(b);
-    });
-
-    function setStatus(msg, isError = false) {
-      statusEl.textContent = msg || '';
-      statusEl.classList.toggle('visible', !!msg);
-      statusEl.classList.toggle('error', isError);
-    }
-
-    const PYODIDE_VERSION = '0.26.4';
-    let bridge = null;
-
-    async function initBridge() {
-      setStatus('Loading the in-browser Python runtime (one-time download, may take a moment)…');
-      const pyodide = await loadPyodide({
-        indexURL: `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`,
-      });
-      pyodide.FS.mkdirTree('/pkg');
-      pyodide.runPython('import sys; sys.path.insert(0, "/pkg")');
-      const manifest = await (await fetch('src/fantasy_map_generator-files.json')).json();
-      for (const rel of manifest) {
-        const resp = await fetch('src/fantasy_map_generator/' + rel);
-        if (!resp.ok) throw new Error(`Could not load ${rel}`);
-        const text = await resp.text();
-        const path = '/pkg/fantasy_map_generator/' + rel;
-        const dir = path.slice(0, path.lastIndexOf('/'));
-        pyodide.FS.mkdirTree(dir);
-        pyodide.FS.writeFile(path, text);
-      }
-      const bridgeSrc = await (await fetch('bridge.py')).text();
-      pyodide.runPython(bridgeSrc);
-      const g = pyodide.globals;
-      bridge = {
-        presets: () => g.get('bridge_presets')(),
-        render: (payload) => g.get('bridge_render')(payload),
-        download: (payload) => g.get('bridge_download')(payload),
-        normalize: (payload) => g.get('bridge_normalize')(payload),
-        fromSvg: (payload) => g.get('bridge_from_svg')(payload),
-        addMountain: (payload) => g.get('add_mountain')(payload),
-        updateMountain: (payload) => g.get('update_mountain')(payload),
-        deleteMountain: (payload) => g.get('delete_mountain')(payload),
-      };
-      setStatus('');
-    }
-
-    function deepClone(o) { return JSON.parse(JSON.stringify(o)); }
-
-    function pushUndo() {
-      if (!workingConfig) return;
-      undoStack.push(deepClone(workingConfig));
-      if (undoStack.length > 50) undoStack.shift();
-      redoStack = [];
-      updateUndoButtons();
-    }
-
-    function updateUndoButtons() {
-      undoBtn.disabled = undoStack.length === 0;
-      redoBtn.disabled = redoStack.length === 0;
-    }
-
-    function setMode(m) {
-      mode = m;
-      document.getElementById('mode-select').classList.toggle('active', m === 'select');
-      document.getElementById('mode-place').classList.toggle('active', m === 'place');
-      document.getElementById('mode-path').classList.toggle('active', m === 'path');
-      document.getElementById('mode-mountain').classList.toggle('active', m === 'mountain');
-      previewWrap.classList.toggle('select-mode', m === 'select');
-      previewWrap.classList.toggle('place-mode', m === 'place' || m === 'path' || m === 'mountain');
-      if (m === 'select') {
-        draftPoints = [];
-        modeHint.textContent = 'Click a settlement, path, or mountain to select. Drag places to move.';
-        [...paletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
-        [...pathPaletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
-        drawDraftOverlay();
-      } else if (m === 'path') {
-        modeHint.textContent = `Draw ${pathKind}: click waypoints, double-click or Enter to finish.`;
-      } else if (m === 'mountain') {
-        const hint = mountainKind === 'single'
-          ? `Place ${mountainKind} mountain: click to place. Esc to cancel.`
-          : `Draw ${mountainKind} mountain: click waypoints, double-click or Enter to finish.`;
-        modeHint.textContent = hint;
-      }
-    }
-
-    function knobs() {
-      return {
-        seed: parseInt(seedSlider.value, 10),
-        detail: parseInt(detailSlider.value, 10) / 100,
-        coast_roughness: parseInt(roughSlider.value, 10) / 100,
-      };
-    }
-
-    function debounceRender() {
-      if (renderTimer) clearTimeout(renderTimer);
-      renderTimer = setTimeout(() => { renderTimer = null; renderMap(); }, 120);
-    }
-
-    async function loadPresets() {
-      const out = JSON.parse(bridge.presets());
-      presets = out;
-      galleryEl.innerHTML = '';
-      presets.forEach(p => {
-        const card = document.createElement('div');
-        card.className = 'gallery-card';
-        const prev = document.createElement('div');
-        prev.className = 'gallery-preview';
-        prev.innerHTML = p.preview || '<p style="text-align:center;color:#999">—</p>';
-        const h = document.createElement('h3');
-        h.textContent = p.name;
-        card.appendChild(prev); card.appendChild(h);
-        card.addEventListener('click', () => selectPreset(p.id));
-        galleryEl.appendChild(card);
-      });
-    }
-
-    async function selectPreset(presetId) {
-      const p = presets.find(x => x.id === presetId);
-      if (!p || !p.config) { setStatus('Preset unavailable', true); return; }
-      currentPreset = presetId;
-      workingConfig = deepClone(p.config);
-      if (workingConfig.detail != null) {
-        detailSlider.value = Math.round(workingConfig.detail * 100);
-        detailValue.textContent = workingConfig.detail.toFixed(2);
-      }
-      if (workingConfig.coast_roughness != null) {
-        roughSlider.value = Math.round(workingConfig.coast_roughness * 100);
-        roughValue.textContent = workingConfig.coast_roughness.toFixed(2);
-      }
-      selectedId = null;
-      selectedKind = null;
-      draftPoints = [];
-      undoStack = []; redoStack = []; updateUndoButtons();
-      placeCounters = {};
-      pathCounters = {};
-      gallerySection.style.display = 'none';
-      editorEl.classList.add('visible');
-      worldName.textContent = p.name;
-      setMode('select');
-      capturePaletteSnapshot();
-      syncColorGrid();
-      updateInspector();
-      await renderMap();
-      try { sessionStorage.setItem('fmg_working', JSON.stringify({ preset: presetId, config: workingConfig, ...knobs() })); } catch (_) {}
-    }
-
-    function updateInspector() {
-      const title = selectedKind === 'title' && selectedId === 'map_title' && workingConfig ? workingConfig : null;
-      const place = selectedKind === 'place' && selectedId && workingConfig && workingConfig.places
-        ? workingConfig.places[selectedId] : null;
-      const route = selectedKind === 'route' && selectedId && workingConfig && workingConfig.routes
-        ? workingConfig.routes[selectedId] : null;
-      const mountain = selectedKind === 'mountain' && selectedId && workingConfig && workingConfig.mountain_ranges
-        ? workingConfig.mountain_ranges[selectedId] : null;
-      inspectorEmpty.style.display = (!title && !place && !route && !mountain) ? 'block' : 'none';
-      inspectorTitle.style.display = title ? 'block' : 'none';
-      inspectorPlace.style.display = place ? 'block' : 'none';
-      inspectorRoute.style.display = route ? 'block' : 'none';
-      inspectorMountain.style.display = mountain ? 'block' : 'none';
-      if (title) {
-        propTitle.value = workingConfig.name || '';
-        propTitleSize.value = workingConfig.title_font_size || 26;
-        propTitleSizeValue.textContent = propTitleSize.value;
-        propTitleBold.checked = workingConfig.title_bold || false;
-        propTitleItalic.checked = workingConfig.title_italic || false;
-      }
-      if (place) {
-        propName.value = place.name || '';
-        propTier.value = place.tier || 'village';
-      }
-      if (route) {
-        propRouteLabel.value = route.label || selectedId || '';
-        propRouteKind.value = route.kind || 'road';
-        routePointsHint.textContent = `${(route.points || []).length} waypoints`;
-      }
-      if (mountain) {
-        propMountainKind.value = mountain.kind || 'ridge';
-        propMountainDensity.value = mountain.density || 0.5;
-        propMountainSize.value = mountain.size || 50;
-        propMountainRotation.value = mountain.rotation || 0;
-        mountainDensityVal.textContent = (mountain.density || 0.5).toFixed(2);
-        mountainSizeVal.textContent = (mountain.size || 50).toFixed(0);
-        mountainRotationVal.textContent = (mountain.rotation || 0).toFixed(0) + '°';
-
-        // Show size and rotation controls for all mountain types
-        mountainSizeGroup.style.display = 'block';
-        mountainRotationGroup.style.display = 'block';
-
-        const pointCount = (mountain.points || []).length;
-        mountainPointsHint.textContent = mountain.kind === 'ridge' ? `${pointCount} waypoints` : `— ${mountain.kind}`;
-      }
-    }
-
-    const colorInputs = {};
-    let paletteSnapshot = null;
-    let colorDirty = false;
-
-    function buildColorGrid() {
-      const grid = document.getElementById('color-grid');
-      grid.innerHTML = '';
-      for (const [key, label] of PALETTE_KEYS) {
-        const row = document.createElement('div');
-        row.className = 'color-row';
-        const lab = document.createElement('label');
-        lab.textContent = label;
-        lab.htmlFor = 'color-' + key;
-        const inp = document.createElement('input');
-        inp.type = 'color';
-        inp.id = 'color-' + key;
-        inp.value = '#000000';
-        row.appendChild(lab); row.appendChild(inp);
-        grid.appendChild(row);
-        colorInputs[key] = inp;
-        inp.addEventListener('input', () => {
-          if (!workingConfig) return;
-          if (!workingConfig.palette) workingConfig.palette = {};
-          if (!colorDirty) { pushUndo(); colorDirty = true; }
-          workingConfig.palette[key] = inp.value;
-          debounceRender();
-        });
-        inp.addEventListener('change', () => { colorDirty = false; });
-      }
-    }
-
-    function syncColorGrid() {
-      const pal = (workingConfig && workingConfig.palette) || {};
-      for (const [key] of PALETTE_KEYS) {
-        const v = pal[key];
-        if (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) {
-          colorInputs[key].value = v;
-        }
-      }
-    }
-
-    function capturePaletteSnapshot() {
-      paletteSnapshot = workingConfig && workingConfig.palette
-        ? deepClone(workingConfig.palette) : null;
-    }
-
-    function resetColors() {
-      if (!workingConfig || !paletteSnapshot) return;
-      pushUndo();
-      workingConfig.palette = deepClone(paletteSnapshot);
-      syncColorGrid();
-      renderMap();
-    }
-
-    async function renderMap() {
-      if (!workingConfig) return;
-      const seq = ++renderSeq;
-      const body = {
-        config: workingConfig,
-        selected_id: selectedId,
-        ...knobs(),
-      };
-      try {
-        const out = JSON.parse(bridge.render(JSON.stringify(body)));
-        if (seq !== renderSeq) return;
-        if (out.error) {
-          setStatus(out.error, true);
-          return;
-        }
-        previewEl.innerHTML = out.svg;
-        if (out.config) workingConfig = out.config;
-        setStatus('');
-        bindSvgEvents();
-        drawDraftOverlay();
-        try {
-          sessionStorage.setItem('fmg_working', JSON.stringify({
-            preset: currentPreset, config: workingConfig, selected_id: selectedId, ...knobs()
-          }));
-        } catch (_) {}
-      } catch (e) {
-        if (seq !== renderSeq) return;
-        setStatus(e.message, true);
-      }
-    }
-
-    function svgPoint(evt) {
-      const svg = previewEl.querySelector('svg');
-      if (!svg) return null;
-      const pt = svg.createSVGPoint();
-      pt.x = evt.clientX; pt.y = evt.clientY;
-      const ctm = svg.getScreenCTM();
-      if (!ctm) return null;
-      const p = pt.matrixTransform(ctm.inverse());
-      return { x: p.x, y: p.y };
-    }
-
-    function findFeature(el) {
-      let n = el;
-      while (n && n !== previewEl) {
-        if (n.getAttribute && n.getAttribute('data-id') && n.getAttribute('data-kind')) {
-          return { id: n.getAttribute('data-id'), kind: n.getAttribute('data-kind') };
-        }
-        n = n.parentNode;
-      }
-      return null;
-    }
-
-    function bindSvgEvents() {
-      const svg = previewEl.querySelector('svg');
-      if (!svg) return;
-      svg.style.userSelect = 'none';
-    }
-
-    function drawDraftOverlay() {
-      const svg = previewEl.querySelector('svg');
-      if (!svg) return;
-      let g = svg.querySelector('#draft-overlay');
-      if (g) g.remove();
-      if (!draftPoints.length) return;
-      g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-      g.setAttribute('id', 'draft-overlay');
-      g.setAttribute('pointer-events', 'none');
-      if (draftPoints.length >= 2) {
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        path.setAttribute('d', 'M ' + draftPoints.map(p => `${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' L '));
-        path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', '#ffcc33');
-        path.setAttribute('stroke-width', '2.5');
-        path.setAttribute('stroke-dasharray', '6 4');
-        g.appendChild(path);
-      }
-      draftPoints.forEach(p => {
-        const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]); c.setAttribute('r', '4');
-        c.setAttribute('fill', '#ffcc33'); c.setAttribute('stroke', '#000'); c.setAttribute('stroke-width', '1');
-        g.appendChild(c);
-      });
-      svg.appendChild(g);
-    }
-
-    function clampToCanvas(x, y) {
-      const w = workingConfig.canvas_width || 1000;
-      const h = workingConfig.canvas_height || 700;
-      return {
-        x: Math.max(0, Math.min(w, x)),
-        y: Math.max(0, Math.min(h, y)),
-      };
-    }
-
-    function nextPlaceName(tier) {
-      placeCounters[tier] = (placeCounters[tier] || 0) + 1;
-      const label = tier.charAt(0).toUpperCase() + tier.slice(1);
-      return `${label} ${placeCounters[tier]}`;
-    }
-
-    function placeAt(x, y) {
-      pushUndo();
-      const id = 'place_' + Math.random().toString(16).slice(2, 10);
-      const name = nextPlaceName(placeTier);
-      if (!workingConfig.places) workingConfig.places = {};
-      workingConfig.places[id] = {
-        x, y, name, tier: placeTier, id, locked: true, icon: null
-      };
-      selectedId = id;
-      selectedKind = 'place';
-      updateInspector();
-      renderMap();
-    }
-
-    function finishPath() {
-      if (draftPoints.length < 2) {
-        setStatus('Need at least 2 waypoints', true);
-        return;
-      }
-      pushUndo();
-      pathCounters[pathKind] = (pathCounters[pathKind] || 0) + 1;
-      const id = 'route_' + Math.random().toString(16).slice(2, 10);
-      const label = `${pathKind} ${pathCounters[pathKind]}`;
-      if (!workingConfig.routes) workingConfig.routes = {};
-      workingConfig.routes[id] = {
-        points: draftPoints.map(p => [p[0], p[1]]),
-        kind: pathKind,
-        id,
-        label,
-        locked: true,
-      };
-      draftPoints = [];
-      selectedId = id;
-      selectedKind = 'route';
-      setMode('select');
-      updateInspector();
-      renderMap();
-    }
-
-    function finishMountain() {
-      if (mountainKind === 'ridge' && draftPoints.length < 2) {
-        setStatus('Need at least 2 waypoints for ridge mountain', true);
-        return;
-      }
-      if (mountainKind === 'single' && draftPoints.length < 1) {
-        setStatus('Click to place a single mountain', true);
-        return;
-      }
-      pushUndo();
-      mountainCounters[mountainKind] = (mountainCounters[mountainKind] || 0) + 1;
-      const id = 'mountain_' + Math.random().toString(16).slice(2, 10);
-      if (!workingConfig.mountain_ranges) workingConfig.mountain_ranges = {};
-      const mountain = {
-        kind: mountainKind,
-        density: 0.7,
-        size: 50,
-        rotation: 0,
-        id,
-      };
-      if (mountainKind === 'ridge') {
-        mountain.points = draftPoints.map(p => [p[0], p[1]]);
-      } else if (mountainKind === 'single') {
-        mountain.center = [draftPoints[0][0], draftPoints[0][1]];
-      } else {
-        mountain.center = [workingConfig.canvas_width / 2, workingConfig.canvas_height / 2];
-        mountain.radii = [80, 60];
-      }
-      workingConfig.mountain_ranges[id] = mountain;
-      draftPoints = [];
-      selectedId = id;
-      selectedKind = 'mountain';
-      setMode('select');
-      updateInspector();
-      renderMap();
-    }
-
-    previewWrap.addEventListener('pointerdown', (evt) => {
-      if (!workingConfig) return;
-      const pt = svgPoint(evt);
-      if (!pt) return;
-      const feat = findFeature(evt.target);
-      const now = Date.now();
-      const isDouble = (now - lastClickTime) < 320;
-      lastClickTime = now;
-
-      if (mode === 'place') {
-        const c = clampToCanvas(pt.x, pt.y);
-        placeAt(c.x, c.y);
-        return;
-      }
-
-      if (mode === 'path') {
-        const c = clampToCanvas(pt.x, pt.y);
-        if (isDouble && draftPoints.length >= 1) {
-          // double-click finishes (last click already added or not)
-          if (draftPoints.length >= 2) finishPath();
-          return;
-        }
-        draftPoints.push([c.x, c.y]);
-        drawDraftOverlay();
-        modeHint.textContent = `Draw ${pathKind}: ${draftPoints.length} point(s). Double-click or Enter to finish.`;
-        return;
-      }
-
-      if (mode === 'mountain') {
-        const c = clampToCanvas(pt.x, pt.y);
-        if (isDouble && draftPoints.length >= 1) {
-          // double-click finishes
-          if (mountainKind === 'ridge' && draftPoints.length >= 2) finishMountain();
-          return;
-        }
-        draftPoints.push([c.x, c.y]);
-        drawDraftOverlay();
-        if (mountainKind === 'single') {
-          // Single mountains finish immediately
-          finishMountain();
-          return;
-        }
-        modeHint.textContent = `Draw ${mountainKind}: ${draftPoints.length} point(s). Double-click or Enter to finish.`;
-        return;
-      }
-
-      // select mode
-      if (feat && feat.kind === 'place' && workingConfig.places[feat.id]) {
-        selectedId = feat.id;
-        selectedKind = 'place';
-        updateInspector();
-        const place = workingConfig.places[feat.id];
-        dragging = {
-          id: feat.id,
-          kind: 'place',
-          pointerId: evt.pointerId,
-          origX: place.x,
-          origY: place.y,
-          moved: false,
-        };
-        previewWrap.setPointerCapture(evt.pointerId);
-        ghost.style.display = 'block';
-        const rect = previewWrap.getBoundingClientRect();
-        ghost.style.left = (evt.clientX - rect.left) + 'px';
-        ghost.style.top = (evt.clientY - rect.top) + 'px';
-        renderMap();
-      } else if (feat && feat.kind === 'route' && workingConfig.routes[feat.id]) {
-        selectedId = feat.id;
-        selectedKind = 'route';
-        const route = workingConfig.routes[feat.id];
-        dragging = {
-          id: feat.id,
-          kind: 'route',
-          pointerId: evt.pointerId,
-          origX: route.points?.[0]?.[0] ?? 0,
-          origY: route.points?.[0]?.[1] ?? 0,
-          moved: false,
-        };
-        previewWrap.setPointerCapture(evt.pointerId);
-        ghost.style.display = 'block';
-        const rect = previewWrap.getBoundingClientRect();
-        ghost.style.left = (evt.clientX - rect.left) + 'px';
-        ghost.style.top = (evt.clientY - rect.top) + 'px';
-        updateInspector();
-        renderMap();
-      } else if (feat && feat.kind === 'mountain' && workingConfig.mountain_ranges[feat.id]) {
-        selectedId = feat.id;
-        selectedKind = 'mountain';
-        const mr = workingConfig.mountain_ranges[feat.id];
-        const origX = mr.kind === 'ridge' ? mr.points?.[0]?.[0] ?? 0 : mr.center?.[0] ?? 0;
-        const origY = mr.kind === 'ridge' ? mr.points?.[0]?.[1] ?? 0 : mr.center?.[1] ?? 0;
-        dragging = {
-          id: feat.id,
-          kind: 'mountain',
-          pointerId: evt.pointerId,
-          origX: origX,
-          origY: origY,
-          moved: false,
-        };
-        previewWrap.setPointerCapture(evt.pointerId);
-        ghost.style.display = 'block';
-        const rect = previewWrap.getBoundingClientRect();
-        ghost.style.left = (evt.clientX - rect.left) + 'px';
-        ghost.style.top = (evt.clientY - rect.top) + 'px';
-        updateInspector();
-        renderMap();
-      } else if (feat && feat.kind === 'title') {
-        selectedId = 'map_title';
-        selectedKind = 'title';
-        dragging = {
-          id: 'map_title',
-          kind: 'title',
-          pointerId: evt.pointerId,
-          origX: workingConfig.title_x || (workingConfig.canvas_width / 2),
-          origY: workingConfig.title_y || 30,
-          moved: false,
-        };
-        previewWrap.setPointerCapture(evt.pointerId);
-        ghost.style.display = 'block';
-        const rect = previewWrap.getBoundingClientRect();
-        ghost.style.left = (evt.clientX - rect.left) + 'px';
-        ghost.style.top = (evt.clientY - rect.top) + 'px';
-        updateInspector();
-        renderMap();
-      } else {
-        selectedId = null;
-        selectedKind = null;
-        updateInspector();
-        renderMap();
-      }
-    });
-
-    previewWrap.addEventListener('pointermove', (evt) => {
-      if (!dragging) return;
-      const pt = svgPoint(evt);
-      if (!pt) return;
-      const c = clampToCanvas(pt.x, pt.y);
-      const dx = c.x - dragging.origX;
-      const dy = c.y - dragging.origY;
-      if (Math.hypot(dx, dy) > 2) dragging.moved = true;
-      const rect = previewWrap.getBoundingClientRect();
-      ghost.style.left = (evt.clientX - rect.left) + 'px';
-      ghost.style.top = (evt.clientY - rect.top) + 'px';
-    });
-
-    function endDrag(evt) {
-      if (!dragging) return;
-      const d = dragging;
-      dragging = null;
-      ghost.style.display = 'none';
-      try { previewWrap.releasePointerCapture(d.pointerId); } catch (_) {}
-      if (!d.moved) return;
-      const pt = svgPoint(evt);
-      if (!pt) return;
-      const c = clampToCanvas(pt.x, pt.y);
-      pushUndo();
-
-      if (d.kind === 'place' && workingConfig.places[d.id]) {
-        workingConfig.places[d.id].x = c.x;
-        workingConfig.places[d.id].y = c.y;
-      } else if (d.kind === 'mountain' && workingConfig.mountain_ranges[d.id]) {
-        const mr = workingConfig.mountain_ranges[d.id];
-        if (mr.kind === 'ridge') {
-          // Move all waypoints by the same offset
-          const dx = c.x - d.origX;
-          const dy = c.y - d.origY;
-          if (mr.points) {
-            mr.points = mr.points.map(p => [p[0] + dx, p[1] + dy]);
-          }
-        } else {
-          // For single/ring/stacked, just move the center
-          mr.center = [c.x, c.y];
-        }
-      } else if (d.kind === 'route' && workingConfig.routes[d.id]) {
-        // Move all waypoints by the same offset
-        const dx = c.x - d.origX;
-        const dy = c.y - d.origY;
-        if (workingConfig.routes[d.id].points) {
-          workingConfig.routes[d.id].points = workingConfig.routes[d.id].points.map(p => [p[0] + dx, p[1] + dy]);
-        }
-      } else if (d.kind === 'title') {
-        // Move the title
-        workingConfig.title_x = c.x;
-        workingConfig.title_y = c.y;
-      }
-
-      renderMap();
-    }
-
-    previewWrap.addEventListener('pointerup', endDrag);
-    previewWrap.addEventListener('pointercancel', () => {
-      dragging = null; ghost.style.display = 'none';
-    });
-
-    document.getElementById('mode-select').addEventListener('click', () => setMode('select'));
-    document.getElementById('mode-place').addEventListener('click', () => {
-      setMode('place');
-      modeHint.textContent = `Place: ${placeTier} — click map to drop. Esc for select.`;
-      [...paletteEl.querySelectorAll('button')].forEach(x => x.classList.toggle('active', x.dataset.tier === placeTier));
-      [...pathPaletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
-    });
-    document.getElementById('mode-path').addEventListener('click', () => {
-      setMode('path');
-      [...pathPaletteEl.querySelectorAll('button')].forEach(x => x.classList.toggle('active', x.dataset.kind === pathKind));
-      [...paletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
-    });
-
-    document.getElementById('mode-mountain').addEventListener('click', () => {
-      mountainKind = document.getElementById('mountain-kind').value;
-      draftPoints = [];
-      setMode('mountain');
-      [...paletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
-      [...pathPaletteEl.querySelectorAll('button')].forEach(x => x.classList.remove('active'));
-    });
-
-    document.getElementById('mountain-kind').addEventListener('change', (e) => {
-      mountainKind = e.target.value;
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        draftPoints = [];
-        setMode('select');
-      }
-      if (e.key === 'Enter' && mode === 'path') {
-        e.preventDefault();
-        finishPath();
-      }
-      if (e.key === 'Enter' && mode === 'mountain') {
-        e.preventDefault();
-        finishMountain();
-      }
-      const typing = document.activeElement === propName || document.activeElement === propRouteLabel || document.activeElement === propTitle;
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId && !typing) {
-        e.preventDefault();
-        deleteSelected();
-      }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) redo(); else undo();
-      }
-    });
-
-    function deleteSelected() {
-      if (!selectedId || !workingConfig) return;
-      pushUndo();
-      if (selectedKind === 'place' && workingConfig.places[selectedId]) {
-        delete workingConfig.places[selectedId];
-      } else if (selectedKind === 'route' && workingConfig.routes[selectedId]) {
-        delete workingConfig.routes[selectedId];
-      } else if (selectedKind === 'mountain' && workingConfig.mountain_ranges[selectedId]) {
-        delete workingConfig.mountain_ranges[selectedId];
-      }
-      selectedId = null;
-      selectedKind = null;
-      updateInspector();
-      renderMap();
-    }
-
-    document.getElementById('delete-feature').addEventListener('click', deleteSelected);
-    document.getElementById('delete-route').addEventListener('click', deleteSelected);
-    document.getElementById('delete-mountain').addEventListener('click', deleteSelected);
-
-    let propTimer = null;
-    function applyPlaceProps() {
-      if (selectedKind !== 'place' || !selectedId || !workingConfig.places[selectedId]) return;
-      pushUndo();
-      workingConfig.places[selectedId].name = propName.value || 'Unnamed';
-      workingConfig.places[selectedId].tier = propTier.value || 'village';
-      renderMap();
-    }
-    function applyRouteProps() {
-      if (selectedKind !== 'route' || !selectedId || !workingConfig.routes[selectedId]) return;
-      pushUndo();
-      workingConfig.routes[selectedId].label = propRouteLabel.value || selectedId;
-      workingConfig.routes[selectedId].kind = propRouteKind.value || 'road';
-      renderMap();
-    }
-    propName.addEventListener('change', applyPlaceProps);
-    propTier.addEventListener('change', applyPlaceProps);
-    propName.addEventListener('input', () => {
-      if (propTimer) clearTimeout(propTimer);
-      propTimer = setTimeout(applyPlaceProps, 400);
-    });
-    propRouteLabel.addEventListener('change', applyRouteProps);
-    propRouteKind.addEventListener('change', applyRouteProps);
-    propRouteLabel.addEventListener('input', () => {
-      if (propTimer) clearTimeout(propTimer);
-      propTimer = setTimeout(applyRouteProps, 400);
-    });
-
-    function applyMountainProps() {
-      if (selectedKind !== 'mountain' || !selectedId || !workingConfig.mountain_ranges[selectedId]) return;
-      pushUndo();
-      const mr = workingConfig.mountain_ranges[selectedId];
-      mr.kind = propMountainKind.value || 'ridge';
-      mr.density = parseFloat(propMountainDensity.value) || 0.5;
-      mr.size = parseFloat(propMountainSize.value) || 50;
-      mr.rotation = parseFloat(propMountainRotation.value) || 0;
-      renderMap();
-    }
-    propMountainKind.addEventListener('change', applyMountainProps);
-    propMountainDensity.addEventListener('input', (e) => {
-      mountainDensityVal.textContent = parseFloat(e.target.value).toFixed(2);
-      if (propTimer) clearTimeout(propTimer);
-      propTimer = setTimeout(applyMountainProps, 400);
-    });
-    propMountainSize.addEventListener('input', (e) => {
-      mountainSizeVal.textContent = parseFloat(e.target.value).toFixed(0);
-      if (propTimer) clearTimeout(propTimer);
-      propTimer = setTimeout(applyMountainProps, 400);
-    });
-    propMountainRotation.addEventListener('input', (e) => {
-      mountainRotationVal.textContent = parseFloat(e.target.value).toFixed(0) + '°';
-      if (propTimer) clearTimeout(propTimer);
-      propTimer = setTimeout(applyMountainProps, 400);
-    });
-
-    function applyTitleProps() {
-      if (selectedKind !== 'title' || !workingConfig) return;
-      pushUndo();
-      workingConfig.name = propTitle.value || 'Untitled Fantasy World';
-      workingConfig.title_font_size = parseFloat(propTitleSize.value) || 26;
-      workingConfig.title_bold = propTitleBold.checked;
-      workingConfig.title_italic = propTitleItalic.checked;
-      renderMap();
-    }
-    propTitle.addEventListener('change', applyTitleProps);
-    propTitle.addEventListener('input', () => {
-      if (propTimer) clearTimeout(propTimer);
-      propTimer = setTimeout(applyTitleProps, 400);
-    });
-    propTitleSize.addEventListener('input', (e) => {
-      propTitleSizeValue.textContent = parseFloat(e.target.value).toFixed(0);
-      if (propTimer) clearTimeout(propTimer);
-      propTimer = setTimeout(applyTitleProps, 400);
-    });
-    propTitleBold.addEventListener('change', applyTitleProps);
-    propTitleItalic.addEventListener('change', applyTitleProps);
-
-    function undo() {
-      if (!undoStack.length) return;
-      redoStack.push(deepClone(workingConfig));
-      workingConfig = undoStack.pop();
-      if (selectedKind === 'place' && selectedId && !(workingConfig.places || {})[selectedId]) {
-        selectedId = null; selectedKind = null;
-      }
-      if (selectedKind === 'route' && selectedId && !(workingConfig.routes || {})[selectedId]) {
-        selectedId = null; selectedKind = null;
-      }
-      updateUndoButtons(); updateInspector(); renderMap();
-    }
-    function redo() {
-      if (!redoStack.length) return;
-      undoStack.push(deepClone(workingConfig));
-      workingConfig = redoStack.pop();
-      updateUndoButtons(); updateInspector(); renderMap();
-    }
-    undoBtn.addEventListener('click', undo);
-    redoBtn.addEventListener('click', redo);
-
-    seedSlider.addEventListener('input', e => { seedValue.textContent = e.target.value; debounceRender(); });
-    detailSlider.addEventListener('input', e => {
-      detailValue.textContent = (e.target.value / 100).toFixed(2); debounceRender();
-    });
-    roughSlider.addEventListener('input', e => {
-      roughValue.textContent = (e.target.value / 100).toFixed(2); debounceRender();
-    });
-
-    async function download(format) {
-      if (format === 'png') { downloadPng(); return; }
-      const out = JSON.parse(bridge.download(JSON.stringify({ config: workingConfig, format, ...knobs() })));
-      if (out.error) {
-        setStatus(out.error, true);
-        return;
-      }
-      const blob = new Blob([out.data], { type: out.mime });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = out.filename;
-      a.click();
-      URL.revokeObjectURL(a.href);
-    }
-    async function downloadPng() {
-      const svg = previewEl.querySelector('svg');
-      if (!svg) return;
-      const svgUrl = URL.createObjectURL(new Blob(
-        [new XMLSerializer().serializeToString(svg)],
-        { type: 'image/svg+xml;charset=utf-8' }
-      ));
-      try {
-        const img = new Image();
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = reject;
-          img.src = svgUrl;
-        });
-        const box = svg.viewBox.baseVal;
-        const scale = 2;
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.round(box.width * scale);
-        canvas.height = Math.round(box.height * scale);
-        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        const a = document.createElement('a');
-        a.href = canvas.toDataURL('image/png');
-        a.download = `map-${knobs().seed}.png`;
-        a.click();
-      } catch (e) {
-        setStatus(e.message, true);
-      } finally {
-        URL.revokeObjectURL(svgUrl);
-      }
-    }
-    document.getElementById('download-svg').addEventListener('click', () => download('svg'));
-    document.getElementById('download-png').addEventListener('click', () => download('png'));
-    document.getElementById('download-json').addEventListener('click', () => download('json'));
-
-    document.getElementById('open-json').addEventListener('change', async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        const payload = data.config ? data : { config: data };
-        if (data.meta && data.meta.seed != null) {
-          seedSlider.value = data.meta.seed;
-          seedValue.textContent = seedSlider.value;
-        }
-        const out = JSON.parse(bridge.normalize(JSON.stringify(payload)));
-        if (out.error) throw new Error(out.error || 'Invalid world');
-        pushUndo();
-        workingConfig = out.config;
-        currentPreset = 'custom';
-        worldName.textContent = workingConfig.name || 'Custom world';
-        selectedId = null; selectedKind = null;
-        capturePaletteSnapshot();
-        syncColorGrid();
-        updateInspector();
-        await renderMap();
-        setStatus('Loaded world JSON');
-      } catch (err) {
-        setStatus(err.message, true);
-      }
-      e.target.value = '';
-    });
-
-    document.getElementById('open-svg').addEventListener('change', async (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (!file) return;
-      try {
-        const text = await file.text();
-        const out = JSON.parse(bridge.fromSvg(JSON.stringify({ svg: text })));
-        if (out.error) throw new Error(out.error || 'Invalid SVG world');
-        pushUndo();
-        workingConfig = out.config;
-        if (out.seed != null) {
-          seedSlider.value = out.seed;
-          seedValue.textContent = String(out.seed);
-        }
-        currentPreset = 'custom';
-        worldName.textContent = (workingConfig && workingConfig.name) || 'Custom world';
-        selectedId = null; selectedKind = null;
-        capturePaletteSnapshot();
-        syncColorGrid();
-        updateInspector();
-        await renderMap();
-        setStatus('Loaded world from SVG metadata');
-      } catch (err) {
-        setStatus(err.message, true);
-      }
-      e.target.value = '';
-    });
-
-    document.getElementById('copy-link').addEventListener('click', () => {
-      const k = knobs();
-      const url = `${location.origin}${location.pathname}?preset=${currentPreset}&seed=${k.seed}&detail=${k.detail}&coast_roughness=${k.coast_roughness}`;
-      navigator.clipboard.writeText(url).then(() => {
-        document.getElementById('copy-status').textContent = 'Copied!';
-        setTimeout(() => { document.getElementById('copy-status').textContent = ''; }, 1500);
-      });
-    });
-
-    document.getElementById('back-btn').addEventListener('click', () => {
-      editorEl.classList.remove('visible');
-      gallerySection.style.display = 'block';
-      workingConfig = null;
-      currentPreset = null;
-    });
-
-    document.getElementById('reset-colors').addEventListener('click', resetColors);
-    buildColorGrid();
-
-    const params = new URLSearchParams(location.search);
-    if (params.has('seed')) {
-      seedSlider.value = params.get('seed');
-      seedValue.textContent = seedSlider.value;
-    }
-    if (params.has('detail')) {
-      const d = Math.round(parseFloat(params.get('detail')) * 100);
-      if (!Number.isNaN(d)) { detailSlider.value = d; detailValue.textContent = (d/100).toFixed(2); }
-    }
-    if (params.has('coast_roughness')) {
-      const r = Math.round(parseFloat(params.get('coast_roughness')) * 100);
-      if (!Number.isNaN(r)) { roughSlider.value = r; roughValue.textContent = (r/100).toFixed(2); }
-    }
-
-    (async function boot() {
-      try {
-        await initBridge();
-      } catch (err) {
-        setStatus('Could not start the map engine: ' + (err && err.message ? err.message : err), true);
-        return;
-      }
-      await loadPresets();
-      if (params.has('preset')) {
-        selectPreset(params.get('preset'));
-        return;
-      }
-      try {
-        const saved = JSON.parse(sessionStorage.getItem('fmg_working') || 'null');
-        if (saved && saved.config) {
-          // optional restore — only if user wants; skip auto for now
-        }
-      } catch (_) {}
-    })();
-  </script>
+  <script src="app.js"></script>
 </body>
 </html>

@@ -678,12 +678,47 @@ def _mapconfig_from_dict(data: dict[str, Any]) -> MapConfig:
                 continue
             out.append(
                 BiomeRegion(
-                    name=str(item.get("name") or f"Biome {i}"),
+                    name=str(item["name"]) if item.get("name") is not None else f"Biome {i}",
                     biome=item.get("biome") or "plain",
                     center=_as_tuple2(item.get("center") or (500, 350)),
                     radii=_as_tuple2(item.get("radii") or (80, 60)),
                     density=float(item.get("density") or 0.5),
+                    fill=item.get("fill"),
+                    left_border=_as_points(item["left_border"]) if item.get("left_border") else None,
+                    right_border=_as_points(item["right_border"]) if item.get("right_border") else None,
+                    clip_to_land=bool(item.get("clip_to_land", False)),
                     id=str(item.get("id") or f"biome_{i}"),
+                )
+            )
+        return out
+
+    def region_label_list(raw: Any) -> list[RegionLabel]:
+        out: list[RegionLabel] = []
+        for i, item in enumerate(raw or []):
+            if not isinstance(item, dict):
+                continue
+            out.append(
+                RegionLabel(
+                    name=str(item.get("name") or f"Region {i}"),
+                    center=_as_tuple2(item.get("center") or (500, 350)),
+                    font_size=float(item.get("font_size") or 30.0),
+                    rotation=float(item.get("rotation") or 0.0),
+                    id=str(item.get("id") or f"region_label_{i}"),
+                )
+            )
+        return out
+
+    def lake_list(raw: Any) -> list[WaterBody]:
+        out: list[WaterBody] = []
+        for i, item in enumerate(raw or []):
+            if not isinstance(item, dict):
+                continue
+            out.append(
+                WaterBody(
+                    center=_as_tuple2(item.get("center") or (500, 350)),
+                    radii=_as_tuple2(item.get("radii") or (20, 15)),
+                    fill=item.get("fill"),
+                    id=str(item.get("id") or f"lake_{i}"),
                 )
             )
         return out
@@ -783,10 +818,19 @@ def _mapconfig_from_dict(data: dict[str, Any]) -> MapConfig:
         style_kit=data.get("style_kit") or "mist_bowl",
         landmass=land_list(data.get("landmass")),
         biome_regions=biome_list(data.get("biome_regions")),
+        region_labels=region_label_list(data.get("region_labels")),
         mountain_ranges=mtn_list(data.get("mountain_ranges")),
         forest_stands=forest_list(data.get("forest_stands")),
+        lakes=lake_list(data.get("lakes")),
         places=places,
         routes=routes,
+        ships=[_as_tuple2(p) for p in (data.get("ships") or [])],
+        volcanoes=[_as_tuple2(p) for p in (data.get("volcanoes") or [])],
+        sacred_sites=[
+            (float(x), float(y), str(k)) for x, y, k in (data.get("sacred_sites") or [])
+        ],
+        legend_entries=[(str(a), str(b)) for a, b in (data.get("legend_entries") or [])],
+        legend_pos=_as_tuple2(data["legend_pos"]) if data.get("legend_pos") else None,
         palette=palette,
         decor=decor,
         detail=float(data.get("detail") if data.get("detail") is not None else 0.55),

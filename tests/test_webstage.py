@@ -31,6 +31,8 @@ def staged():
 
 def test_layout(staged):
     assert (staged / "index.html").is_file()
+    assert (staged / "app.js").is_file()
+    assert (staged / "style.css").is_file()
     assert (staged / "bridge.py").is_file()
     assert (staged / "src" / PKG).is_dir()
     assert (staged / "src" / PKG / "config.py").is_file()
@@ -41,8 +43,26 @@ def test_layout(staged):
 
 def test_no_server_endpoints_in_page(staged):
     html = (staged / "index.html").read_text()
-    assert "/api/" not in html
-    assert "fetch('/" not in html
+    js = (staged / "app.js").read_text()
+    for text in (html, js):
+        assert "/api/" not in text
+        assert "fetch('/" not in text
+
+
+def test_index_has_no_inline_style_or_script(staged):
+    """index.html/app.js/style.css split (later session, matching
+    ../anime-character-creator's own layout): index.html should link the
+    other two, not carry their content inline again."""
+    html = (staged / "index.html").read_text()
+    assert "<style>" not in html
+    assert '<script src="app.js">' in html
+    assert '<link rel="stylesheet" href="style.css">' in html
+    # The only inline <script> left should be nothing but whitespace between
+    # its tags (i.e. no <script>...code...</script>, only <script src=...>).
+    import re
+
+    for block in re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", html, re.S):
+        assert block.strip() == ""
 
 
 def test_manifest_matches_staged_files(staged):
