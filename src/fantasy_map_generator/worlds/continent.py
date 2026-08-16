@@ -77,7 +77,7 @@ TUMEN_COLOR = "#b3974f"  # steppe tan-gold
 DEVRAN_COLOR = "#c17a3d"  # Ottoman-coded warm terracotta
 
 CONTINENT_CONFIG = MapConfig(
-    name="The Continent",  # working title, not yet a settled in-world name
+    name="Land of the Sleeping Gods",  # design.md's "Sleeping Gods" section
     layout="island",
     style_kit="ink_parchment",
     canvas_width=1600,

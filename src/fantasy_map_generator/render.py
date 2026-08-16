@@ -132,7 +132,7 @@ def _rect(
     return f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" {" ".join(attrs)}/>'
 
 
-_FILLER_WORDS = {"the", "no"}
+_FILLER_WORDS = {"the", "no", "of", "a", "an", "and"}
 
 
 def _title_case(s: str) -> str:
@@ -934,6 +934,19 @@ def _region_label(label: RegionLabel, palette: Palette) -> str:
     RegionLabel's own docstring for how this differs from a BiomeRegion's
     smaller, density-gated label)."""
     cx, cy = label.center
+    # Invisible hit-rect for easier picking, same trick the title uses
+    # (see title_elems in render_map): SVG only hit-tests actual glyph ink,
+    # not the visual space around/between letters, so without this a click
+    # anywhere but squarely on a stroke falls through to whatever biome
+    # fill/mountain/place is painted underneath -- which is exactly the
+    # "can't click the country names" bug this fixes. Sized off the label's
+    # own text (bold, spacing=3.0 below) rather than a fixed box, since
+    # region names vary a lot in length ("OKIRI" vs "WODENSREICH").
+    hit_w = max(90.0, len(label.name) * label.font_size * 0.72)
+    hit_h = label.font_size * 1.8
+    hit_rect = _rect(
+        cx - hit_w / 2, cy - hit_h * 0.65, hit_w, hit_h, fill="#ffffff", opacity=0.001
+    )
     txt = _text(
         cx,
         cy,
@@ -943,9 +956,10 @@ def _region_label(label: RegionLabel, palette: Palette) -> str:
         fill=palette.text,
         spacing=3.0,
     )
+    combined = hit_rect + txt
     if not label.rotation:
-        return txt
-    return f'<g transform="rotate({label.rotation:.1f} {cx:.1f} {cy:.1f})">{txt}</g>'
+        return combined
+    return f'<g transform="rotate({label.rotation:.1f} {cx:.1f} {cy:.1f})">{combined}</g>'
 
 
 _LEGEND_GLYPHS: dict[str, str] = {
@@ -1017,6 +1031,11 @@ def _decor_ship(cx: float, cy: float, palette: Palette, scale: float = 1.0) -> l
     """A small sailing-ship glyph for open ocean; positions are hand-picked
     per world (see MapConfig.ships), not auto-placed/collision-avoided."""
     s = 9.0 * scale
+    # Invisible hit-circle, same trick as _region_label/places: the hull/
+    # sail/mast only fill a thin, off-center silhouette, easy to miss with a
+    # click; a generous circular hit area fixes that without changing how
+    # the glyph looks.
+    hit = _circle(cx, cy, 16.0 * scale, fill="#ffffff", opacity=0.001)
     hull = _path(
         [(cx - s, cy), (cx - s * 0.6, cy + s * 0.5), (cx + s * 0.6, cy + s * 0.5), (cx + s, cy)],
         stroke=palette.ink,
@@ -1031,7 +1050,7 @@ def _decor_ship(cx: float, cy: float, palette: Palette, scale: float = 1.0) -> l
         sw=0.6,
         opacity=0.9,
     )
-    return [hull, mast, sail]
+    return [hit, hull, mast, sail]
 
 
 def _decor_volcano(cx: float, cy: float, scale: float = 1.0) -> list[str]:
@@ -1040,6 +1059,7 @@ def _decor_volcano(cx: float, cy: float, scale: float = 1.0) -> list[str]:
     world's plain mountain_color); positions are hand-picked per world (see
     MapConfig.volcanoes)."""
     s = 22.0 * scale
+    hit = _circle(cx, cy - s * 0.3, s * 1.1, fill="#ffffff", opacity=0.001)
     cone = _polygon(
         [(cx - s * 0.65, cy + s * 0.4), (cx, cy - s), (cx + s * 0.65, cy + s * 0.4)],
         fill="#3c2a24",
@@ -1054,7 +1074,7 @@ def _decor_volcano(cx: float, cy: float, scale: float = 1.0) -> list[str]:
         sw=2.2,
         opacity=0.35,
     )
-    return [smoke, glow, cone, crater]
+    return [hit, smoke, glow, cone, crater]
 
 
 def _decor_sacred_site(cx: float, cy: float, kind: str, palette: Palette) -> list[str]:
@@ -1062,8 +1082,12 @@ def _decor_sacred_site(cx: float, cy: float, kind: str, palette: Palette) -> lis
     small stepped/stacked stone monument, still standing; "kurgan" is an
     unbuilt mound ringed by standing stones -- deliberately not a structure,
     for a culture whose doctrine forbids building one (e.g. the Tumen)."""
+    # Both variants are small (a low mound, or stacked tiers under 20px
+    # across) and easy to miss with a click -- the smallest glyphs on the
+    # map, so the most in need of a generous invisible hit circle.
+    hit = _circle(cx, cy, 18.0, fill="#ffffff", opacity=0.001)
     if kind == "kurgan":
-        out = [_ellipse_fill(cx, cy, 10.0, 6.0, fill=palette.road_dim, opacity=0.5)]
+        out = [hit, _ellipse_fill(cx, cy, 10.0, 6.0, fill=palette.road_dim, opacity=0.5)]
         for i in range(6):
             a = math.tau * i / 6
             sx, sy = cx + math.cos(a) * 13.0, cy + math.sin(a) * 7.0
@@ -1071,7 +1095,7 @@ def _decor_sacred_site(cx: float, cy: float, kind: str, palette: Palette) -> lis
         return out
     # "temple": three stacked, narrowing stone tiers plus a small central spire.
     tiers = [(16.0, 4.0), (11.0, 4.0), (6.0, 4.0)]
-    out = []
+    out = [hit]
     y = cy + 6.0
     for w, h in tiers:
         out.append(_rect(cx - w / 2, y - h, w, h, fill=palette.old_wall, stroke=palette.ink, sw=0.7))
