@@ -20,6 +20,7 @@ from fantasy_map_generator.config import (
     Place,
     RegionLabel,
     Route,
+    WaterBody,
 )
 
 # --- SVG primitives ---------------------------------------------------------
@@ -319,6 +320,16 @@ def _clip_polygon_by_border(
     return [enter_pt, *inside_pts, exit_pt, *border_seg]
 
 
+def _lake(lake: WaterBody, palette: Palette) -> str:
+    cx, cy = lake.center
+    rx, ry = lake.radii
+    return (
+        f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" '
+        f'fill="{palette.water}" fill-opacity="0.75" stroke="{palette.water_deep}" '
+        f'stroke-width="1" stroke-opacity="0.6"/>'
+    )
+
+
 def _biome_color(palette: Palette, biome: str) -> str:
     return {
         "forest": palette.forest,
@@ -349,10 +360,8 @@ def _mountains_ring(
 ) -> list[str]:
     out: list[str] = []
     cx, cy = center
-    rx, ry = radii
-    size_scale = size / 50.0  # normalize to default size of 50
-    rx_scaled = rx * size_scale
-    ry_scaled = ry * size_scale
+    rx, ry = radii  # the ring's footprint -- always literal, independent of `size`
+    peak_scale = size / 50.0  # scales only the peak glyphs (height + base width), not the footprint
     n = max(8, int(num_peaks * density))
     rot_rad = math.radians(rotation)
     for i in range(n):
@@ -360,12 +369,14 @@ def _mountains_ring(
         if mouth_start_deg <= a_deg <= mouth_end_deg:
             continue
         a = math.radians(a_deg)
-        bx = cx + (rx_scaled + 8 + rng.uniform(-3, 3)) * math.cos(a)
-        by = cy + (ry_scaled + 8 + rng.uniform(-3, 3)) * math.sin(a)
+        base_offset = (8 + rng.uniform(-3, 3)) * peak_scale
+        bx = cx + (rx + base_offset) * math.cos(a)
+        by = cy + (ry + base_offset) * math.sin(a)
         tx, ty = -math.sin(a), math.cos(a)
-        w = (16 + rng.uniform(-3, 5)) * size_scale
-        apex_x = cx + (rx_scaled + 42 + rng.uniform(-6, 14)) * math.cos(a) + tx * rng.uniform(-6, 6)
-        apex_y = cy + (ry_scaled + 42 + rng.uniform(-6, 14)) * math.sin(a) + ty * rng.uniform(-6, 6)
+        w = (16 + rng.uniform(-3, 5)) * peak_scale
+        peak_reach = (42 + rng.uniform(-6, 14)) * peak_scale
+        apex_x = cx + (rx + peak_reach) * math.cos(a) + tx * rng.uniform(-6, 6)
+        apex_y = cy + (ry + peak_reach) * math.sin(a) + ty * rng.uniform(-6, 6)
         p1 = (bx + tx * w, by + ty * w)
         p2 = (bx - tx * w, by - ty * w)
         out.append(
@@ -1159,6 +1170,10 @@ def render_map(
                         opacity=0.3,
                     )
                 )
+
+    # Lakes (standalone inland water bodies, see WaterBody)
+    for lake in cfg.lakes:
+        layers.append(_lake(lake, palette))
 
     # Mountains
     mountain_ranges = dict(cfg.mountain_ranges)

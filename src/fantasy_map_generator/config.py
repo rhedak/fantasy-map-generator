@@ -145,6 +145,10 @@ class MountainRange:
     mouth_start_deg: float = 0.0
     mouth_end_deg: float = 0.0
     num_peaks: int = 54
+    # For kind="ring": radii is the ring's footprint (always literal); size
+    # scales only the peak glyphs (height + base width) drawn around that
+    # footprint, so footprint and peak height/size are independently
+    # adjustable rather than both riding on one shared radii*size product.
     size: float = 50.0
     rotation: float = 0.0
     id: str = ""
@@ -159,6 +163,17 @@ class ForestStand:
     tree_style: TreeStyle = "triangle"
     density: float = 0.5
     num_clumps: int = 8
+    id: str = ""
+
+
+@dataclass
+class WaterBody:
+    """A standalone inland lake (as opposed to Route(kind="river"), a
+    flowing line feature). Small and simple by design -- an ellipse, filled
+    with the palette's water color."""
+
+    center: tuple[float, float]
+    radii: tuple[float, float]
     id: str = ""
 
 
@@ -263,6 +278,7 @@ class MapConfig:
     region_labels: list[RegionLabel] = field(default_factory=list)
     mountain_ranges: dict[str, MountainRange] = field(default_factory=dict)
     forest_stands: list[ForestStand] = field(default_factory=list)
+    lakes: list[WaterBody] = field(default_factory=list)
     places: dict[str, Place] = field(default_factory=dict)
     routes: dict[str, Route] = field(default_factory=dict)
 
@@ -421,6 +437,18 @@ class MapConfig:
                 )
             return out
 
+        def _with_ids_lakes(items: list[WaterBody]) -> list[WaterBody]:
+            out = []
+            for i, w in enumerate(items):
+                out.append(
+                    WaterBody(
+                        center=(float(w.center[0]), float(w.center[1])),
+                        radii=(float(w.radii[0]), float(w.radii[1])),
+                        id=w.id or f"lake_{i}",
+                    )
+                )
+            return out
+
         def _with_ids_forest(items: list[ForestStand]) -> list[ForestStand]:
             out = []
             for i, f in enumerate(items):
@@ -447,6 +475,7 @@ class MapConfig:
             region_labels=_with_ids_region_labels(list(self.region_labels)),
             mountain_ranges=_with_ids_mtn(self.mountain_ranges),
             forest_stands=_with_ids_forest(list(self.forest_stands)),
+            lakes=_with_ids_lakes(list(self.lakes)),
             places=places,
             routes=routes,
             locations={p.name: p.pos for p in places.values()},

@@ -21,6 +21,7 @@ from fantasy_map_generator.config import (
     Place,
     RegionLabel,
     Route,
+    WaterBody,
     make_meander_border,
 )
 
@@ -134,17 +135,41 @@ CONTINENT_CONFIG = MapConfig(
     mountain_ranges={
         # Okiri's defining feature: the Valley of Mists is a ring of mountains
         # with its capital inside, not a wall on either political border (see
-        # style-anchors/map.png, the Valley's own local map -- "Kiri no
-        # Chuushin"/"the Basin" ringed by peaks). The mouth faces
-        # south-southwest, toward Kiriguchi and the rest of Okiri's *western*
-        # settlements (outside the ring, still Okiri, not Wodensreich).
+        # style-anchors/map.png, the Valley's own local map). Radii and mouth
+        # degrees (92-178) are a direct port of that map's own BOWL_RX/RY and
+        # MOUTH_START/END (390x265 at valley-local scale, uniformly scaled by
+        # ~0.167 -- the same factor used for every other ported landmark
+        # below -- to fit this ring's real elliptical shape at continent
+        # scale). The mouth faces south-southwest, toward Kiriguchi and the
+        # rest of Okiri's *western* settlements (outside the ring, still
+        # Okiri, not Wodensreich).
         "valley_ring": MountainRange(
             kind="ring",
             center=(780.0, 460.0),
-            radii=(65.0, 65.0),
-            mouth_start_deg=110.0,
-            mouth_end_deg=190.0,
+            radii=(65.0, 44.0),
+            mouth_start_deg=92.0,
+            mouth_end_deg=178.0,
             num_peaks=40,
+            density=1.0,
+        ),
+        # The true center: a second, smaller mountain ring around the Basin
+        # itself (valley/mapgen.py's BASIN_RING_*, "the true center should
+        # read as sealed off" -- same nested-ring structure as the local map,
+        # just both rings scaled down together). size=12 shrinks the peak
+        # glyphs themselves (not just the ring radius) so they read as a
+        # compact inner ring rather than swamping it -- see the size_scale
+        # math in render.py's _mountains_ring. Gap continues to face the
+        # same 270-335 degree arc as the local map, toward Kasumikyo.
+        # radii is the ring's actual footprint; size independently controls
+        # how tall/wide the individual peak glyphs are (see MountainRange.size).
+        "basin_ring": MountainRange(
+            kind="ring",
+            center=(780.0, 460.0),
+            radii=(14.0, 11.0),
+            mouth_start_deg=270.0,
+            mouth_end_deg=335.0,
+            num_peaks=16,
+            size=6.0,
             density=1.0,
         ),
         # East of the ring: broken, low hills with several small rough passes
@@ -153,22 +178,32 @@ CONTINENT_CONFIG = MapConfig(
         # well short of the Okiri/Tumen political border further east.
         "eastern_hills": MountainRange(
             kind="ridge",
-            points=[(865.0, 375.0), (888.0, 420.0), (858.0, 465.0), (882.0, 515.0), (855.0, 570.0)],
+            points=[(865.0, 390.0), (888.0, 425.0), (858.0, 460.0), (882.0, 495.0), (855.0, 530.0)],
             density=0.3,
         ),
     },
     forest_stands=[
-        ForestStand((770.0, 415.0), (45.0, 32.0), "conifer", 0.6, 3),
-        ForestStand((805.0, 500.0), (40.0, 28.0), "conifer", 0.55, 3),
+        ForestStand((738.0, 428.0), (26.0, 18.0), "conifer", 0.6, 3),
+        ForestStand((758.0, 495.0), (26.0, 16.0), "conifer", 0.55, 3),
+    ],
+    lakes=[
+        # Both a direct port of the local map's LAKE_KASUMIKYO / LAKE_KIRI_NO_SATO,
+        # scaled by the same ~0.167 factor as the mountain ring and slightly
+        # exaggerated in size so they stay visible at continent scale.
+        WaterBody(center=(824.0, 443.0), radii=(12.0, 9.0)),  # lake near Kasumikyo
+        WaterBody(center=(747.0, 486.0), radii=(6.0, 4.5)),  # lake near Kiri no Sato
     ],
     places={
         "Eisenhort": Place(320.0, 420.0, tier="capital"),
-        "Kasumikyo": Place(785.0, 455.0, tier="ruin"),
+        # Ported from the local map's outer-district coordinate (same 0.167
+        # scale/anchor as the ring and lakes above), inside the Basin ring's
+        # own gap-facing side.
+        "Kasumikyo": Place(803.0, 471.0, tier="ruin"),
         # Outside the ring, right against the mouth's own implied arc (as if
         # the ring continued through the gap) -- Okiri's own western
         # settlement, not Wodensreich (style-anchors/map.png's "Kiriguchi /
         # Nebelmark", outside the Mist Wall, hugging it closely).
-        "Kiriguchi": Place(680.0, 518.0, tier="village"),
+        "Kiriguchi": Place(698.0, 528.0, tier="village"),
         # East of the ring, through the broken eastern hills, still Okiri --
         # working name pending author sign-off, same as Devran's capital.
         "Higashimura": Place(900.0, 475.0, tier="hamlet"),
@@ -182,14 +217,14 @@ CONTINENT_CONFIG = MapConfig(
         # The Wodensreich's own "eastern trade roads" (Ch26:17-18): maintained
         # road through to Kiriguchi, then through the ring's mouth to Kasumikyo.
         "western_road": Route(
-            [(320.0, 420.0), (500.0, 460.0), (620.0, 500.0), (680.0, 518.0), (723.0, 493.0), (785.0, 455.0)],
+            [(320.0, 420.0), (500.0, 460.0), (630.0, 505.0), (698.0, 528.0), (745.0, 500.0), (803.0, 471.0)],
             kind="road",
         ),
         # Kasumikyo out through the eastern gap in the hills, on to the
         # Tumen plains and Devran -- unstructured trail the whole way past
         # the ring, matching the Tumen border's own "no clean crossing".
         "eastern_trail": Route(
-            [(785.0, 455.0), (845.0, 460.0), (900.0, 475.0), (960.0, 440.0),
+            [(803.0, 471.0), (855.0, 470.0), (900.0, 475.0), (960.0, 440.0),
              (1000.0, 380.0), (1050.0, 400.0), (1180.0, 410.0), (1270.0, 420.0)],
             kind="trail",
         ),
