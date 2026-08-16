@@ -470,6 +470,16 @@ def _mountains_ridge(
             samples.append((x0 + (x1 - x0) * t, y0 + (y1 - y0) * t))
     samples.append(points[-1])
 
+    if style != "symbol":
+        # A solid ribbon along the ridge line, drawn under the individual
+        # peak triangles below. Random peak width/spacing alone tends to
+        # leave slivers of background between consecutive triangles (looks
+        # like scattered paper cutouts instead of a continuous range); this
+        # guarantees the base line has no gaps regardless of that jitter.
+        size_scale = size / 50.0
+        band_w = 15.0 * size_scale
+        out.append(_path(samples, stroke=mountain_color, sw=band_w, opacity=0.95))
+
     for i, (bx, by) in enumerate(samples):
         if i + 1 < len(samples):
             dx = samples[i + 1][0] - bx
@@ -734,6 +744,31 @@ def _dune_hatch(
             (x + w * 0.5, y + rng.uniform(0, 3)),
         ]
         out.append(_path(pts, stroke=color, sw=1.1, opacity=0.35))
+    return out
+
+
+def _reef_hatch(
+    rng: random.Random,
+    center: tuple[float, float],
+    radii: tuple[float, float],
+    color: str,
+    density: float,
+) -> list[str]:
+    """Scattered small dots near the outer edge of a biome ellipse -- a
+    coral-reef/atoll ring, meant for a "reef" region sized a bit larger than
+    the island it surrounds (see Biome = "reef"). Confined to an outer
+    annulus (0.82-1.0 of radii) rather than filling the ellipse, so it reads
+    as a ring in the water around the coastline, not a wash over the land."""
+    out: list[str] = []
+    cx, cy = center
+    rx, ry = radii
+    n = int(24 * density)
+    for _ in range(n):
+        a = rng.uniform(0, math.tau)
+        r = rng.uniform(0.82, 1.0)
+        x = cx + math.cos(a) * rx * r
+        y = cy + math.sin(a) * ry * r
+        out.append(_circle(x, y, rng.uniform(1.2, 2.4), fill=color, opacity=0.5))
     return out
 
 
@@ -1053,6 +1088,44 @@ def _decor_ship(cx: float, cy: float, palette: Palette, scale: float = 1.0) -> l
     return [hit, hull, mast, sail]
 
 
+def _decor_iceberg(cx: float, cy: float, palette: Palette, scale: float = 1.0) -> list[str]:
+    """A small drifting ice floe/berg glyph for cold open water -- jagged
+    white polygon with a pale waterline shadow, echoing _decor_ship's
+    hand-placed, ungated convention (see MapConfig.icebergs)."""
+    s = 10.0 * scale
+    hit = _circle(cx, cy, 14.0 * scale, fill="#ffffff", opacity=0.001)
+    shadow = _ellipse_fill(cx, cy + s * 0.15, s * 1.05, s * 0.4, fill=palette.water_deep, opacity=0.35)
+    berg = _polygon(
+        [
+            (cx - s, cy + s * 0.3),
+            (cx - s * 0.5, cy - s * 0.6),
+            (cx, cy - s * 0.2),
+            (cx + s * 0.6, cy - s * 0.7),
+            (cx + s, cy + s * 0.2),
+            (cx + s * 0.3, cy + s * 0.35),
+        ],
+        fill=palette.ice,
+        stroke=palette.mountain_stroke,
+        sw=0.8,
+        opacity=0.95,
+    )
+    return [hit, shadow, berg]
+
+
+def _decor_waterfall(cx: float, cy: float, palette: Palette, scale: float = 1.0) -> list[str]:
+    """A short cascade glyph -- a few parallel falling streaks over a small
+    plunge-pool ellipse -- for a spring/waterfall landmark on a route (see
+    MapConfig.waterfalls)."""
+    s = 14.0 * scale
+    hit = _circle(cx, cy, 16.0 * scale, fill="#ffffff", opacity=0.001)
+    pool = _ellipse_fill(cx, cy + s * 0.55, s * 0.55, s * 0.22, fill=palette.water, opacity=0.6)
+    streaks = [
+        _line(cx + dx, cy - s * 0.9, cx + dx * 1.3, cy + s * 0.4, stroke=palette.water, sw=1.4, opacity=0.75)
+        for dx in (-s * 0.25, 0.0, s * 0.25)
+    ]
+    return [hit, pool, *streaks]
+
+
 def _decor_volcano(cx: float, cy: float, scale: float = 1.0) -> list[str]:
     """A single dark volcanic cone with a glowing crater and a thin smoke
     wisp -- distinct from an ordinary MountainRange peak (which uses the
@@ -1311,6 +1384,10 @@ def render_map(
             region_elems.extend(
                 _swamp_stipple(rng, region.center, region.radii, palette.swamp, region.density)
             )
+        elif region.biome == "reef":
+            region_elems.extend(
+                _reef_hatch(rng, region.center, region.radii, palette.coast, region.density)
+            )
         elif region.biome == "ice":
             # hatch
             cx, cy = region.center
@@ -1560,6 +1637,23 @@ def render_map(
         if selected_id and selected_id == shid:
             elems.append(_circle(sx, sy, 16, fill="none", stroke="#ffcc33", sw=2.0, opacity=0.75))
         layers.append(_group(elems, data_id=shid, data_kind="ship"))
+
+    # Icebergs (hand-placed, see MapConfig.icebergs). Index-based ids, same
+    # caveat as ships/volcanoes above.
+    for i, (ix, iy) in enumerate(cfg.icebergs):
+        ibid = f"iceberg_{i}"
+        elems = _decor_iceberg(ix, iy, palette)
+        if selected_id and selected_id == ibid:
+            elems.append(_circle(ix, iy, 14, fill="none", stroke="#ffcc33", sw=2.0, opacity=0.75))
+        layers.append(_group(elems, data_id=ibid, data_kind="iceberg"))
+
+    # Waterfalls (hand-placed, see MapConfig.waterfalls).
+    for i, (wx, wy) in enumerate(cfg.waterfalls):
+        wfid = f"waterfall_{i}"
+        elems = _decor_waterfall(wx, wy, palette)
+        if selected_id and selected_id == wfid:
+            elems.append(_circle(wx, wy, 16, fill="none", stroke="#ffcc33", sw=2.0, opacity=0.75))
+        layers.append(_group(elems, data_id=wfid, data_kind="waterfall"))
 
     # Title / cartouche
     if cfg.decor.cartouche:

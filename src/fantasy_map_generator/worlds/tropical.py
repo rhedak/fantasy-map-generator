@@ -59,6 +59,11 @@ TROPICAL_CONFIG = MapConfig(
     biome_regions=[
         BiomeRegion("Jungle", "forest", (420.0, 340.0), (120.0, 85.0), 0.8),
         BiomeRegion("Lagoon Shore", "coast", (700.0, 400.0), (70.0, 50.0), 0.5),
+        # fill="none" keeps the base ellipse wash invisible; the "reef"
+        # biome only draws a scattered dot-ring near its outer edge, sized
+        # a bit larger than the main island so the ring sits in the water
+        # around the coastline rather than washing over the jungle.
+        BiomeRegion("Coral Reef", "reef", (420.0, 340.0), (198.0, 142.0), 0.55, fill="none"),
     ],
     mountain_ranges={
         "central_peaks": MountainRange(
@@ -86,6 +91,7 @@ TROPICAL_CONFIG = MapConfig(
         "Coastal Town": Place(650.0, 350.0, tier="town"),
         "Island Village": Place(200.0, 550.0, tier="village"),
         "Lagoon Harbor": Place(750.0, 420.0, tier="capital"),
+        "Reef Watch": Place(780.0, 220.0, tier="hamlet"),
     },
     routes={
         "reef_path": Route(
@@ -96,7 +102,17 @@ TROPICAL_CONFIG = MapConfig(
             [(420.0, 280.0), (400.0, 340.0), (380.0, 400.0), (360.0, 440.0)],
             kind="river",
         ),
+        # Links the small NE island (previously unlinked) to Lagoon Harbor.
+        "north_ferry": Route(
+            [(750.0, 420.0), (770.0, 320.0), (780.0, 220.0)],
+            kind="ferry",
+        ),
     },
+    # A dormant-volcano landmark on the main island's central peak, and a
+    # waterfall where "spring_river" begins -- justifying its name.
+    volcanoes=[(420.0, 258.0)],
+    waterfalls=[(408.0, 345.0)],
+    ships=[(550.0, 175.0), (900.0, 300.0), (120.0, 260.0), (520.0, 630.0)],
     palette=TROPICAL_PALETTE,
     decor=Decor(border=False, compass=True, scale=True, cartouche=False),
     detail=0.65,

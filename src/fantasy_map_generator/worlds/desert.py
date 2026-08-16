@@ -10,6 +10,7 @@ from fantasy_map_generator.config import (
     Palette,
     Place,
     Route,
+    WaterBody,
 )
 
 DESERT_PALETTE = Palette(
@@ -87,16 +88,28 @@ DESERT_CONFIG = MapConfig(
         # oasis palms (sparse canopy)
         ForestStand((200.0, 300.0), (35.0, 25.0), "canopy", 0.9, 3),
         ForestStand((500.0, 500.0), (28.0, 20.0), "canopy", 0.7, 2),
+        # third, smaller palm cluster around the new waystation oasis
+        ForestStand((400.0, 520.0), (16.0, 11.0), "canopy", 0.6, 2),
+    ],
+    lakes=[
+        # Oasis City implied its water source without drawing it.
+        WaterBody(center=(200.0, 300.0), radii=(18.0, 12.0)),
+        WaterBody(center=(400.0, 520.0), radii=(11.0, 7.0)),
     ],
     places={
         "Oasis City": Place(200.0, 300.0, tier="capital"),
         "Lost Temple": Place(700.0, 250.0, tier="ruin"),
+        # A ruined waystation on the same trade road, distinct from the
+        # temple -- a caravanserai rather than a shrine, hinting at a busier
+        # past for this route.
+        "Caravanserai Ruins": Place(760.0, 270.0, tier="ruin"),
         "Trading Post": Place(500.0, 500.0, tier="town"),
         "Sand Fortress": Place(300.0, 550.0, tier="castle"),
+        "Sandwell": Place(400.0, 520.0, tier="hamlet"),
     },
     routes={
         "trade_road": Route(
-            [(200.0, 300.0), (350.0, 350.0), (500.0, 400.0), (700.0, 350.0), (700.0, 250.0)],
+            [(200.0, 300.0), (350.0, 350.0), (500.0, 400.0), (700.0, 350.0), (700.0, 250.0), (760.0, 270.0)],
             kind="road",
         ),
         "wadi": Route(
@@ -108,6 +121,22 @@ DESERT_CONFIG = MapConfig(
             kind="trail",
         ),
     },
+    legend_entries=[
+        ("capital", "Capital"),
+        ("town", "Town"),
+        ("village", "Village"),
+        ("ruin", "Ruins"),
+        ("castle", "Fortress"),
+        ("desert", "Desert"),
+        ("road", "Road"),
+        ("trail", "Caravan Trail"),
+        ("river", "Wadi"),
+    ],
+    # No cartouche box for the title (see Decor below), so it falls back to
+    # plain centered text at the default title_y=30 -- which cuts right
+    # through decor.border's inner frame lines (drawn at y=14/18). Push it
+    # down below the frame instead.
+    title_y=52.0,
     palette=DESERT_PALETTE,
     decor=Decor(border=True, compass=True, scale=True, cartouche=False, paper_texture=True),
     detail=0.55,

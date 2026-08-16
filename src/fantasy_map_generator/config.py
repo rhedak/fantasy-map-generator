@@ -21,7 +21,7 @@ StyleKit = Literal[
     "rpg_symbols",
     "valley_parity",
 ]
-Biome = Literal["forest", "desert", "swamp", "ice", "plain", "coast", "tundra"]
+Biome = Literal["forest", "desert", "swamp", "ice", "plain", "coast", "tundra", "reef"]
 TreeStyle = Literal["triangle", "conifer", "canopy", "stamp"]
 MountainKind = Literal["ring", "ridge", "stacked", "single"]
 RouteKind = Literal["road", "trail", "river", "ferry"]
@@ -297,6 +297,11 @@ class MapConfig:
     # box (kind, label) pairs; both render only if non-empty.
     ships: list[tuple[float, float]] = field(default_factory=list)
     volcanoes: list[tuple[float, float]] = field(default_factory=list)
+    # Drifting pack-ice / iceberg glyphs, same hand-placed (x, y) convention
+    # as ships -- for cold-water worlds only, empty everywhere else.
+    icebergs: list[tuple[float, float]] = field(default_factory=list)
+    # Waterfall / spring glyphs, same hand-placed (x, y) convention as ships.
+    waterfalls: list[tuple[float, float]] = field(default_factory=list)
     # Sleeping Gods sacred-site landmarks (design.md's "Sleeping Gods"): each
     # a (x, y, kind) tuple, kind one of "temple" (a still-standing built
     # monument) or "kurgan" (an unbuilt natural site -- mound and standing
@@ -500,6 +505,8 @@ class MapConfig:
             locations={p.name: p.pos for p in places.values()},
             ships=[(float(x), float(y)) for x, y in self.ships],
             volcanoes=[(float(x), float(y)) for x, y in self.volcanoes],
+            icebergs=[(float(x), float(y)) for x, y in self.icebergs],
+            waterfalls=[(float(x), float(y)) for x, y in self.waterfalls],
             sacred_sites=[(float(x), float(y), str(k)) for x, y, k in self.sacred_sites],
             legend_entries=list(self.legend_entries),
             legend_pos=self.legend_pos,
@@ -826,6 +833,8 @@ def _mapconfig_from_dict(data: dict[str, Any]) -> MapConfig:
         routes=routes,
         ships=[_as_tuple2(p) for p in (data.get("ships") or [])],
         volcanoes=[_as_tuple2(p) for p in (data.get("volcanoes") or [])],
+        icebergs=[_as_tuple2(p) for p in (data.get("icebergs") or [])],
+        waterfalls=[_as_tuple2(p) for p in (data.get("waterfalls") or [])],
         sacred_sites=[
             (float(x), float(y), str(k)) for x, y, k in (data.get("sacred_sites") or [])
         ],

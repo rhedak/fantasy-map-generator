@@ -37,6 +37,8 @@ OLD_WALL = "#8b93a6"  # cool worked stone, distinct from the sand road/buildings
 PALACE_ROOF = "#33456e"  # Okiri court blue (Tenno's pre-cataclysm "layered silk in Okiri blue")
 PALACE_ROOF_LIGHT = "#4d6395"  # upper tier: a lighter step of the same blue
 PALACE_TRIM = "#c7ceda"  # crane-and-mist crest, "silver thread" -- ridge accents only
+PAPER = "#141a24"  # cartouche/legend box fill: a touch darker than BG, for depth
+GOLD = "#c9b896"  # cartouche/legend/border trim -- warm against the cool palette
 
 # The valley's own light: densest at the true center, thinning toward the rim
 # (geography_reference "Map-drawing constraints", mist rendering).
@@ -76,6 +78,8 @@ _PALETTE_FIELDS: dict[str, str] = {
     "PALACE_ROOF_LIGHT": "palace_roof_light",
     "PALACE_TRIM": "palace_trim",
     "GRAD_STOPS": "gradient_stops",
+    "PAPER": "paper",
+    "GOLD": "gold",
 }
 
 _RENDER_LOCK = threading.Lock()
@@ -384,10 +388,10 @@ def _rect(x: float, y: float, w: float, h: float, *, fill: str | None = None,
     return f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" {" ".join(attrs)}/>'
 
 
-# The only words that stay lowercase in map labels ("title style"): the
-# article and the Japanese genitive particle (Kiri no Sato). Everything else
-# is capitalized, per author direction.
-_FILLER_WORDS = {"the", "no"}
+# The only words that stay lowercase in map labels ("title style"): articles,
+# short prepositions/conjunctions, and the Japanese genitive particle (Kiri
+# no Sato). Everything else is capitalized, per author direction.
+_FILLER_WORDS = {"the", "no", "of", "a", "an", "and"}
 
 
 def _title_case(s: str) -> str:
@@ -1055,8 +1059,36 @@ def _zones() -> list[str]:
     ]
 
 
+def _decor_border(w: float, h: float) -> list[str]:
+    """Triple-line frame around the whole map, same construction as the
+    generic kit's _decor_border (render.py) so Valley and Continent read as
+    a matching set: outer ink line at the edge, gold accent line inset,
+    thin inner ink line closing it off."""
+    m = 14.0
+    return [
+        _rect(0, 0, w, h, stroke=INK, sw=2.5),
+        _rect(m, m, w - 2 * m, h - 2 * m, stroke=GOLD, sw=1.2),
+        _rect(m + 4, m + 4, w - 2 * m - 8, h - 2 * m - 8, stroke=INK, sw=0.6),
+    ]
+
+
+def _decor_cartouche(cx: float, cy: float, title: str) -> list[str]:
+    """Title plaque matching the generic kit's _decor_cartouche: a small
+    bordered box (paper fill, gold inner trim) rather than bare text, so
+    the title reads the same way Continent's does."""
+    w, h = 220.0, 36.0
+    x, y = cx - w / 2, cy - h / 2
+    label = _title_case(title)
+    return [
+        _rect(x, y, w, h, fill=PAPER, stroke=INK, sw=1.2, opacity=0.92),
+        _rect(x + 3, y + 3, w - 6, h - 6, stroke=GOLD, sw=0.8),
+        f'<text x="{cx:.1f}" y="{cy + 5:.1f}" font-size="15" text-anchor="middle" '
+        f'font-family="{SERIF}" font-weight="bold" fill="{INK}">{xml_escape(label)}</text>',
+    ]
+
+
 def _legend() -> list[str]:
-    box_x, box_y, box_w, box_h = 762, 480, 220, 172
+    box_x, box_y, box_w, box_h = 762, 468, 224, 184
     rows = [
         ("silver band", "the mist wall (Ch9)"),
         ("dashed line", "the secret passage (sealed)"),
@@ -1065,24 +1097,24 @@ def _legend() -> list[str]:
         ("scale", "scale stylized, not literal"),
     ]
     out = [
-        _rect(box_x, box_y, box_w, box_h, fill="#10141c", opacity=0.62),
-        _rect(box_x, box_y, box_w, box_h, stroke=INK_DIM, sw=1),
-        _text(box_x + 12, box_y + 18, "Legend", size=11, anchor="start", fill=INK, spacing=2),
+        _rect(box_x, box_y, box_w, box_h, fill=PAPER, stroke=INK, sw=1.2, opacity=0.92),
+        _rect(box_x + 3, box_y + 3, box_w - 6, box_h - 6, stroke=GOLD, sw=0.8),
+        _text(box_x + 14, box_y + 22, "Legend", size=12, anchor="start", fill=INK, weight="bold", spacing=1),
     ]
-    y = box_y + 40
+    y = box_y + 46
     for key, label in rows:
         if key == "silver band":
-            out.append(_rect(box_x + 12, y - 6, 14, 6, fill=MIST_WALL))
+            out.append(_rect(box_x + 14, y - 6, 14, 6, fill=MIST_WALL))
         elif key == "dashed line":
-            out.append(_line(box_x + 12, y - 2, box_x + 26, y - 2, stroke=PASSAGE, sw=2, dash="4,3"))
+            out.append(_line(box_x + 14, y - 2, box_x + 28, y - 2, stroke=PASSAGE, sw=2, dash="4,3"))
         elif key == "dotted line":
-            out.append(_line(box_x + 12, y - 2, box_x + 26, y - 2, stroke=ROAD_DIM, sw=2, dash="1.5,3"))
+            out.append(_line(box_x + 14, y - 2, box_x + 28, y - 2, stroke=ROAD_DIM, sw=2, dash="1.5,3"))
         elif key == "zone rings":
-            out.append(_ellipse(box_x + 19, y - 2, 9, 5, stroke=INK_DIM, sw=1))
+            out.append(_ellipse(box_x + 21, y - 2, 9, 5, stroke=INK_DIM, sw=1))
         else:
-            out.append(_text(box_x + 12, y - 4, "~", size=11, anchor="start", fill=INK_DIM))
-        out.append(_text(box_x + 36, y, label, size=10, anchor="start", fill=INK_DIM))
-        y += 24
+            out.append(_text(box_x + 14, y - 4, "~", size=11, anchor="start", fill=INK_DIM))
+        out.append(_text(box_x + 38, y, label, size=10, anchor="start", fill=INK_DIM))
+        y += 26
     return out
 
 
@@ -1249,7 +1281,7 @@ def _render_document(
     else:
         el.extend(bas)
     # --- labels (uniform: same font style as "Kiriguchi / Nebelmark") ---
-    el.append(_text(500, 44, "the valley of mists"))
+    el.extend(_decor_cartouche(500, 40, "the valley of mists"))
     el.append(_text(BOWL_CX, 334, "Kiri no chuushin"))
     el.append(_text(BOWL_CX, 350, "the Basin"))
     el.append(_text(276, 590, "the mist wall"))
@@ -1261,6 +1293,7 @@ def _render_document(
     el.extend(_leader_label(690, 312, 775, 298, "the palace"))
     el.extend(_leader_label(665, 355, 740, 348, "the shrine terrace"))
     el.extend(_leader_label(667, 378, 745, 380, "the treasury"))
+    el.extend(_decor_border(1000, 700))
     el.append("</svg>")
     return "\n".join(el)
 

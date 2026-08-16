@@ -107,6 +107,12 @@ INKWELL_CONFIG = MapConfig(
             kind="road",
         ),
     },
+    # No cartouche box for the title (see Decor below), so it falls back to
+    # plain centered text at the default title_y=30. That clips both
+    # decor.border's inner frame lines (drawn at y=14/18) and, more
+    # visibly, the landmass rectangle's own top edge at y=50 (see points
+    # above) -- push the title below both.
+    title_y=86.0,
     palette=INKWELL_PALETTE,
     decor=Decor(border=True, compass=True, scale=False, cartouche=False, paper_texture=False),
     detail=0.4,

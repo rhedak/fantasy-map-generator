@@ -10,6 +10,7 @@ from fantasy_map_generator.config import (
     Palette,
     Place,
     Route,
+    WaterBody,
 )
 
 AUTUMN_PALETTE = Palette(
@@ -62,35 +63,28 @@ AUTUMN_CONFIG = MapConfig(
     biome_regions=[
         BiomeRegion("Forest of Greenstones", "forest", (550.0, 300.0), (160.0, 110.0), 0.7),
         BiomeRegion("Harvest Plain", "plain", (320.0, 420.0), (130.0, 90.0), 0.65),
-        BiomeRegion("Orchards", "plain", (450.0, 520.0), (80.0, 45.0), 0.5),
+        # Distinct fill from Harvest Plain (same "plain" biome, but the two
+        # would tint identically without an override) -- a warmer, redder
+        # orchard-row brown. Label center pulled south of the region's own
+        # center (which stays at Orchard Hold's texture/tint anchor) so its
+        # text doesn't stack on the "Orchard Hold" place label.
+        BiomeRegion("Orchards", "plain", (450.0, 545.0), (80.0, 45.0), 0.5, fill="#7a4a28"),
     ],
-    mountain_ranges={
-        "northern_spine": MountainRange(
-            kind="ridge",
-            points=[
-                (60.0, 200.0),
-                (140.0, 140.0),
-                (240.0, 120.0),
-                (360.0, 100.0),
-                (480.0, 90.0),
-                (600.0, 110.0),
-                (720.0, 100.0),
-                (860.0, 140.0),
-                (960.0, 180.0),
-            ],
-            density=0.9,
-        ),
-    },
+    mountain_ranges={},
     forest_stands=[
         ForestStand((560.0, 300.0), (140.0, 100.0), "canopy", 0.85, 12),
         ForestStand((450.0, 520.0), (70.0, 40.0), "stamp", 0.6, 5),
         ForestStand((200.0, 400.0), (50.0, 40.0), "conifer", 0.45, 4),
+    ],
+    lakes=[
+        WaterBody(center=(240.0, 220.0), radii=(36.0, 24.0)),
     ],
     places={
         "Harvest City": Place(300.0, 280.0, tier="capital"),
         "Wood Village": Place(650.0, 320.0, tier="village"),
         "Orchard Hold": Place(450.0, 500.0, tier="town"),
         "Stone Keep": Place(200.0, 450.0, tier="castle"),
+        "Millbrook": Place(680.0, 530.0, tier="hamlet"),
     },
     routes={
         "harvest_road": Route(
@@ -101,11 +95,31 @@ AUTUMN_CONFIG = MapConfig(
             [(480.0, 80.0), (460.0, 250.0), (430.0, 400.0), (380.0, 550.0)],
             kind="river",
         ),
+        # A second, shorter tributary feeding the main river near Orchard
+        # Hold, breaking up the single straight line down the map.
+        "tributary": Route(
+            [(280.0, 260.0), (350.0, 330.0), (430.0, 400.0)],
+            kind="river",
+        ),
         "wood_trail": Route(
             [(650.0, 320.0), (560.0, 380.0), (450.0, 500.0)],
             kind="trail",
         ),
+        "mill_trail": Route(
+            [(450.0, 500.0), (580.0, 520.0), (680.0, 530.0)],
+            kind="trail",
+        ),
     },
+    legend_entries=[
+        ("capital", "Capital"),
+        ("town", "Town"),
+        ("village", "Village"),
+        ("castle", "Castle"),
+        ("forest", "Forest"),
+        ("road", "Road"),
+        ("trail", "Trail"),
+        ("river", "River"),
+    ],
     palette=AUTUMN_PALETTE,
     decor=Decor(border=True, compass=True, scale=True, cartouche=True, paper_texture=True),
     detail=0.6,

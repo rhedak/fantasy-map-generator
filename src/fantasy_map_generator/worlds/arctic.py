@@ -10,6 +10,7 @@ from fantasy_map_generator.config import (
     Palette,
     Place,
     Route,
+    WaterBody,
 )
 
 ARCTIC_PALETTE = Palette(
@@ -98,21 +99,36 @@ ARCTIC_CONFIG = MapConfig(
             ],
             density=1.0,
         ),
-        "fjord_range": MountainRange(
+        # Split into two disconnected segments -- a broken, eroded-looking
+        # spur rather than one continuous line like arctic_spine, matching
+        # its lower density and the patchier frontier it's meant to read as.
+        "fjord_range_a": MountainRange(
             kind="ridge",
-            points=[(280.0, 280.0), (360.0, 250.0), (450.0, 270.0)],
+            points=[(280.0, 280.0), (330.0, 258.0)],
             density=0.55,
+        ),
+        "fjord_range_b": MountainRange(
+            kind="ridge",
+            points=[(390.0, 262.0), (450.0, 270.0)],
+            density=0.45,
         ),
     },
     forest_stands=[
         ForestStand((380.0, 300.0), (50.0, 35.0), "conifer", 0.35, 3),
         ForestStand((700.0, 470.0), (40.0, 25.0), "conifer", 0.3, 2),
     ],
+    lakes=[
+        # "Crystal Lake" the place-name implied a lake that was never drawn.
+        WaterBody(center=(500.0, 320.0), radii=(38.0, 24.0), fill="#c8dced"),
+        # A frozen tarn tucked against the fjord peninsula.
+        WaterBody(center=(650.0, 450.0), radii=(24.0, 16.0), fill="#c8dced"),
+    ],
     places={
         "Ice Citadel": Place(350.0, 250.0, tier="castle"),
         "Frost Harbor": Place(700.0, 400.0, tier="capital"),
         "Northern Settlement": Place(200.0, 350.0, tier="village"),
         "Crystal Lake": Place(500.0, 320.0, tier="hamlet"),
+        "Fjord Watch": Place(720.0, 480.0, tier="hamlet"),
     },
     routes={
         "frozen_path": Route(
@@ -123,7 +139,17 @@ ARCTIC_CONFIG = MapConfig(
             [(480.0, 80.0), (470.0, 160.0), (450.0, 240.0), (500.0, 320.0)],
             kind="river",
         ),
+        "fjord_trail": Route(
+            [(700.0, 400.0), (720.0, 480.0)],
+            kind="trail",
+        ),
     },
+    icebergs=[
+        (150.0, 600.0),
+        (850.0, 600.0),
+        (950.0, 480.0),
+        (80.0, 470.0),
+    ],
     palette=ARCTIC_PALETTE,
     decor=Decor(border=False, compass=True, scale=False, cartouche=False),
     detail=0.5,

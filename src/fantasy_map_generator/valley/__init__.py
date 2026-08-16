@@ -114,8 +114,8 @@ def _valley_palette():
         palace_roof_light="#4d6395", # PALACE_ROOF_LIGHT
         palace_trim="#c7ceda",       # PALACE_TRIM
         ink="#0c1018",
-        paper="#2a3344",
-        gold="#c9b896",
+        paper="#141a24",       # PAPER -- cartouche/legend/border box fill
+        gold="#c9b896",        # GOLD -- cartouche/legend/border trim
         gradient_stops=[
             (0.00, "#f3f6fa"),
             (0.28, "#cdd6e0"),
