@@ -27,6 +27,7 @@ mkdir -p "$stage"
 cp "$root"/web/*.html "$stage/"
 cp "$root/web/app.js" "$stage/"
 cp "$root/web/style.css" "$stage/"
+cp "$root"/web/*.jpg "$stage/"
 cp "$root/web/bridge.py" "$stage/"
 mkdir -p "$stage/src/fantasy_map_generator"
 rsync -a --exclude '__pycache__' --exclude '*.pyc' \
